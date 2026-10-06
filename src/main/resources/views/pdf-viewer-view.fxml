@@ -14,12 +14,6 @@
     <HBox alignment="CENTER_LEFT" spacing="8"
           style="-fx-background-color: #ffffff; -fx-padding: 6 16; -fx-border-color: #c2c6d5; -fx-border-width: 0 0 1 0; -fx-min-height: 44px; -fx-max-height: 44px;">
 
-        <!-- Bouton Retour -->
-        <Button fx:id="btnBack" text="← Retour" styleClass="back-link" onAction="#onBack"
-                style="-fx-font-size: 13px; -fx-font-weight: bold;"/>
-
-        <Separator orientation="VERTICAL" style="-fx-padding: 0 4;"/>
-
         <!-- Titre et sous-titre compacts -->
         <VBox alignment="CENTER_LEFT" spacing="1" maxWidth="260" HBox.hgrow="NEVER">
             <Label fx:id="lblTitle" text="Visualiseur PDF"

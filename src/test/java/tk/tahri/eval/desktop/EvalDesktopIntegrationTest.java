@@ -11,6 +11,7 @@ import tk.tahri.eval.desktop.model.*;
 import tk.tahri.eval.desktop.repository.GroupRepository;
 import tk.tahri.eval.desktop.repository.EnrollmentRepository;
 import tk.tahri.eval.desktop.repository.EvaluationRepository;
+import tk.tahri.eval.desktop.exception.InvalidEvaluationStateException;
 import tk.tahri.eval.desktop.service.GroupService;
 import tk.tahri.eval.desktop.service.EvaluationService;
 
@@ -166,11 +167,28 @@ public class EvalDesktopIntegrationTest {
         var blueprints = blueprintPaperAssessmentRepository.findByGroupIdAndEvaluationId(group.getId(), reloadedEval.getId());
         assertEquals(2, blueprints.size(), "Un blueprint d'évaluation doit être généré pour chacun des 2 étudiants");
 
+        // 7b. Vérification du verrouillage : une évaluation PRINTED ne peut plus être modifiée
+        Evaluation printedEval = evaluationRepository.findById(reloadedEval.getId()).orElseThrow();
+        assertEquals(EvaluationState.PRINTED, printedEval.getState());
+        assertThrows(InvalidEvaluationStateException.class, () -> {
+            evaluationService.addQuestion(printedEval.getId(), new Question(UUID.randomUUID().toString(), "Question interdite", null, false, 1.0, 0.0, 0.0, List.of()));
+        }, "L'ajout d'une question sur une évaluation PRINTED doit lever InvalidEvaluationStateException");
+        assertThrows(InvalidEvaluationStateException.class, () -> {
+            evaluationService.saveEvaluation(printedEval);
+        }, "La sauvegarde directe d'une évaluation PRINTED doit lever InvalidEvaluationStateException");
+
         // 8. Test de la correction optique (OMR + OpenCV + ZXing + ONNX + suppression pages non corrigées)
         var scanResult = documentProcessingService.processScanFile(group.getId(), reloadedEval.getId(), generatedPdf, null, null);
         assertNotNull(scanResult, "Le résultat du scan ne doit pas être null");
         assertTrue(scanResult.totalPages() >= 2, "Le fichier scan doit contenir au moins 2 pages");
         assertEquals(2, scanResult.correctedPages() + scanResult.uncorrectedPages(), "Les 2 pages doivent être traitées sans exception transactionnelle");
+
+        // 8b. Vérification du verrouillage : une évaluation ARCHIVED ne peut plus être modifiée
+        Evaluation archivedEval = evaluationRepository.findById(reloadedEval.getId()).orElseThrow();
+        assertEquals(EvaluationState.ARCHIVED, archivedEval.getState());
+        assertThrows(InvalidEvaluationStateException.class, () -> {
+            evaluationService.addQuestion(archivedEval.getId(), new Question(UUID.randomUUID().toString(), "Question interdite", null, false, 1.0, 0.0, 0.0, List.of()));
+        }, "L'ajout d'une question sur une évaluation ARCHIVED doit lever InvalidEvaluationStateException");
 
         // 9. Vérification de la consolidation des notes et de la copie corrigée individuelle
         var grades = gradeService.getGrades(group.getId(), reloadedEval.getId());

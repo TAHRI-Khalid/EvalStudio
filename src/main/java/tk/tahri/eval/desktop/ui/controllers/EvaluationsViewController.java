@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 import tk.tahri.eval.desktop.document.services.DocumentService;
 import tk.tahri.eval.desktop.model.Group;
 import tk.tahri.eval.desktop.model.Evaluation;
+import tk.tahri.eval.desktop.model.EvaluationState;
 import tk.tahri.eval.desktop.service.GroupService;
 import tk.tahri.eval.desktop.service.EvaluationService;
 import tk.tahri.eval.desktop.ui.NotificationService;
@@ -177,11 +178,17 @@ public class EvaluationsViewController implements Initializable {
                 FontIcon editIcon = new FontIcon(Feather.EDIT_3);
                 editIcon.setIconSize(13);
                 btnEdit.setGraphic(editIcon);
-                btnEdit.setTooltip(new Tooltip("Ouvrir le concepteur de questions"));
                 btnEdit.setOnAction(e -> {
                     Evaluation item = getTableView().getItems().get(getIndex());
                     if (item != null) {
-                        mainLayoutController.openEvaluationBuilder(item.getId());
+                        if (item.getState() == EvaluationState.CONCEPTION) {
+                            mainLayoutController.openEvaluationBuilder(item.getId());
+                        } else {
+                            notificationService.showWarning(
+                                    "Modification impossible",
+                                    "Cette évaluation a déjà été imprimée ou archivée. Ses questions et paramètres ne peuvent plus être modifiés."
+                            );
+                        }
                     }
                 });
 
@@ -205,17 +212,35 @@ public class EvaluationsViewController implements Initializable {
                 if (empty) {
                     setGraphic(null);
                 } else {
+                    Evaluation eval = getTableView().getItems().get(getIndex());
+                    boolean isLocked = eval != null && eval.getState() != EvaluationState.CONCEPTION;
+                    btnEdit.setDisable(isLocked);
+                    if (isLocked) {
+                        btnEdit.setTooltip(new Tooltip("Évaluation verrouillée (imprimée ou archivée) : modification impossible"));
+                    } else {
+                        btnEdit.setTooltip(new Tooltip("Ouvrir le concepteur de questions"));
+                    }
                     setGraphic(pane);
                 }
             }
         });
 
-        // Double-clic sur une ligne pour ouvrir le concepteur
+        // Double-clic sur une ligne pour ouvrir le concepteur (uniquement si en conception)
         evalTable.setRowFactory(tv -> {
             TableRow<Evaluation> row = new TableRow<>();
             row.setOnMouseClicked(event -> {
                 if (event.getClickCount() == 2 && (!row.isEmpty())) {
-                    mainLayoutController.openEvaluationBuilder(row.getItem().getId());
+                    Evaluation eval = row.getItem();
+                    if (eval != null) {
+                        if (eval.getState() == EvaluationState.CONCEPTION) {
+                            mainLayoutController.openEvaluationBuilder(eval.getId());
+                        } else {
+                            notificationService.showWarning(
+                                    "Modification impossible",
+                                    "Cette évaluation a déjà été imprimée ou archivée. Ses questions et paramètres ne peuvent plus être modifiés."
+                            );
+                        }
+                    }
                 }
             });
             return row;
@@ -235,7 +260,6 @@ public class EvaluationsViewController implements Initializable {
         evalTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             boolean hasSelection = newVal != null;
             btnGeneratePdf.setDisable(!hasSelection);
-            btnGoToCorrection.setDisable(!hasSelection);
             if (hasSelection) {
                 File pdf = documentService.getGeneratedPdfFile(newVal.getId());
                 btnOpenPdf.setDisable(pdf == null || !pdf.exists());
@@ -259,6 +283,9 @@ public class EvaluationsViewController implements Initializable {
         this.currentGroup = group;
         if (mainLayoutController != null) {
             mainLayoutController.clearActiveEvaluation();
+        }
+        if (btnGoToCorrection != null) {
+            btnGoToCorrection.setDisable(group == null);
         }
         if (group != null) {
             loadEvaluations(group.getId());
@@ -293,9 +320,10 @@ public class EvaluationsViewController implements Initializable {
 
     @FXML
     public void onGoToCorrection() {
-        Evaluation eval = evalTable.getSelectionModel().getSelectedItem();
-        if (currentGroup != null && eval != null) {
-            mainLayoutController.showCorrectionForEvaluation(currentGroup.getId(), eval.getId());
+        if (currentGroup != null) {
+            Evaluation eval = evalTable.getSelectionModel().getSelectedItem();
+            String evalId = eval != null ? eval.getId() : null;
+            mainLayoutController.showCorrectionForEvaluation(currentGroup.getId(), evalId);
         }
     }
 
@@ -304,7 +332,10 @@ public class EvaluationsViewController implements Initializable {
             evalList.clear();
             return;
         }
-        evalList.setAll(evaluationService.getEvaluationsByGroup(groupId));
+        var evals = evaluationService.getEvaluationsByGroup(groupId).stream()
+                .filter(e -> e.getState() == EvaluationState.CONCEPTION)
+                .toList();
+        evalList.setAll(evals);
     }
 
     @FXML
@@ -384,9 +415,16 @@ public class EvaluationsViewController implements Initializable {
             btnGeneratePdf.setDisable(false);
             progressBar.setVisible(false);
             lblProgress.setVisible(false);
-            loadEvaluations(currentGroup.getId());
-            notificationService.showInfo("Génération terminée", "Le sujet PDF avec code-barres PDF417 a été généré avec succès !");
-            onOpenPdf();
+            notificationService.showInfo("Génération terminée", "Le sujet PDF avec code-barres PDF417 a été généré avec succès !\nL'épreuve est maintenant prête pour impression et accessible dans l'onglet « Correction & Scanner ».");
+            File pdf = documentService.getGeneratedPdfFile(selected.getId());
+            if (currentGroup != null) {
+                loadEvaluations(currentGroup.getId());
+            }
+            if (pdf != null && pdf.exists()) {
+                String groupId = currentGroup != null ? currentGroup.getId() : selected.groupId();
+                mainLayoutController.openPdfViewer(pdf, "Sujet : " + selected.getDesignation(),
+                        () -> mainLayoutController.showEvaluationsForGroup(groupId));
+            }
         });
 
         task.setOnFailed(e -> {

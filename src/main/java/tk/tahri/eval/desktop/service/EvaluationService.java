@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tk.tahri.eval.desktop.document.repositories.BlueprintPaperAssessmentRepository;
 import tk.tahri.eval.desktop.document.repositories.UncorrectedPageRepository;
+import tk.tahri.eval.desktop.exception.InvalidEvaluationStateException;
 import tk.tahri.eval.desktop.exception.NotFoundException;
 import tk.tahri.eval.desktop.model.*;
 import tk.tahri.eval.desktop.repository.EvaluationRepository;
@@ -68,6 +69,13 @@ public class EvaluationService {
     }
 
     public Evaluation saveEvaluation(Evaluation evaluation) {
+        if (evaluation != null && evaluation.getId() != null) {
+            evaluationRepository.findById(evaluation.getId()).ifPresent(existing -> {
+                if (existing.getState() != EvaluationState.CONCEPTION && evaluation.getState() == existing.getState()) {
+                    throw new InvalidEvaluationStateException("Une évaluation dont le statut est « " + existing.getState() + " » ne peut plus être modifiée.");
+                }
+            });
+        }
         return evaluationRepository.save(evaluation);
     }
 
@@ -106,6 +114,9 @@ public class EvaluationService {
 
     public Evaluation addQuestion(String evaluationId, Question question) {
         Evaluation evaluation = getEvaluation(evaluationId);
+        if (evaluation.getState() != EvaluationState.CONCEPTION) {
+            throw new InvalidEvaluationStateException("Une évaluation dont le statut est « " + evaluation.getState() + " » ne peut plus être modifiée.");
+        }
         List<Question> questions = new ArrayList<>(evaluation.getQuestions());
         if (question.id() == null || question.id().isBlank()) {
             question = new Question(
@@ -126,6 +137,9 @@ public class EvaluationService {
 
     public Evaluation removeQuestion(String evaluationId, String questionId) {
         Evaluation evaluation = getEvaluation(evaluationId);
+        if (evaluation.getState() != EvaluationState.CONCEPTION) {
+            throw new InvalidEvaluationStateException("Une évaluation dont le statut est « " + evaluation.getState() + " » ne peut plus être modifiée.");
+        }
         List<Question> questions = new ArrayList<>(evaluation.getQuestions());
         questions.removeIf(q -> q.id().equals(questionId));
         evaluation.setQuestions(questions);
@@ -134,6 +148,9 @@ public class EvaluationService {
 
     public Evaluation updateQuestion(String evaluationId, Question updated) {
         Evaluation evaluation = getEvaluation(evaluationId);
+        if (evaluation.getState() != EvaluationState.CONCEPTION) {
+            throw new InvalidEvaluationStateException("Une évaluation dont le statut est « " + evaluation.getState() + " » ne peut plus être modifiée.");
+        }
         List<Question> questions = new ArrayList<>(evaluation.getQuestions());
         for (int i = 0; i < questions.size(); i++) {
             if (questions.get(i).id().equals(updated.id())) {

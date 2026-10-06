@@ -3,6 +3,7 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="tk.tahri.eval.desktop.ui.controllers.EvaluationBuilderController"
@@ -17,6 +18,14 @@
         <Button fx:id="btnAddQuestion" text="Ajouter une question" onAction="#onAddQuestion"/>
         <Button fx:id="btnPreviewDraft" text="Aperçu Brouillon PDF" onAction="#onPreviewDraft"/>
         <Button fx:id="btnSave" text="Enregistrer" styleClass="btn-primary" onAction="#onSave"/>
+    </HBox>
+
+    <!-- Bannière d'information si évaluation verrouillée -->
+    <HBox fx:id="lockedBanner" alignment="CENTER_LEFT" spacing="10" visible="false" managed="false"
+          style="-fx-background-color: #fef3c7; -fx-padding: 10 16; -fx-background-radius: 6; -fx-border-color: #f59e0b; -fx-border-radius: 6;">
+        <FontIcon iconLiteral="fth-lock" iconColor="#b45309" iconSize="18"/>
+        <Label text="Cette évaluation est verrouillée car elle a déjà été imprimée ou archivée. Ses questions et paramètres sont en lecture seule."
+               style="-fx-text-fill: #92400e; -fx-font-weight: bold; -fx-font-size: 13px;"/>
     </HBox>
 
     <!-- SplitPane Paramètres & Questions -->

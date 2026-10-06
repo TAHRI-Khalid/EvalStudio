@@ -30,6 +30,7 @@ import org.springframework.stereotype.Component;
 import tk.tahri.eval.desktop.document.services.DocumentService;
 import tk.tahri.eval.desktop.model.Answer;
 import tk.tahri.eval.desktop.model.Evaluation;
+import tk.tahri.eval.desktop.model.EvaluationState;
 import tk.tahri.eval.desktop.model.Question;
 import tk.tahri.eval.desktop.service.EvaluationService;
 import tk.tahri.eval.desktop.service.ImageStorageService;
@@ -55,6 +56,7 @@ public class EvaluationBuilderController implements Initializable {
     private static final Logger log = LoggerFactory.getLogger(EvaluationBuilderController.class);
 
     @FXML private Label lblTitle;
+    @FXML private HBox lockedBanner;
     @FXML private TextField txtDesignation;
     @FXML private ComboBox<String> comboType;
     @FXML private Spinner<Integer> spinDuration;
@@ -178,6 +180,8 @@ public class EvaluationBuilderController implements Initializable {
                     }
                     contentBox.getChildren().add(answersBox);
 
+                    boolean isLocked = currentEvaluation != null && currentEvaluation.getState() != EvaluationState.CONCEPTION;
+
                     VBox actionButtons = new VBox(4);
                     actionButtons.setAlignment(Pos.TOP_CENTER);
 
@@ -185,8 +189,15 @@ public class EvaluationBuilderController implements Initializable {
                     btnEdit.getStyleClass().add("card-action-btn");
                     btnEdit.setGraphic(new FontIcon(Feather.EDIT_2));
                     btnEdit.setTooltip(new Tooltip("Modifier la question"));
+                    btnEdit.setDisable(isLocked);
+                    btnEdit.setVisible(!isLocked);
+                    btnEdit.setManaged(!isLocked);
                     btnEdit.setOnAction(e -> {
                         e.consume();
+                        if (currentEvaluation != null && currentEvaluation.getState() != EvaluationState.CONCEPTION) {
+                            notificationService.showWarning("Modification impossible", "Une évaluation imprimée ou archivée ne peut pas être modifiée.");
+                            return;
+                        }
                         showQuestionDialog(item);
                     });
 
@@ -196,8 +207,15 @@ public class EvaluationBuilderController implements Initializable {
                     trash.setIconColor(javafx.scene.paint.Color.web("#ba1a1a"));
                     btnDelete.setGraphic(trash);
                     btnDelete.setTooltip(new Tooltip("Supprimer la question"));
+                    btnDelete.setDisable(isLocked);
+                    btnDelete.setVisible(!isLocked);
+                    btnDelete.setManaged(!isLocked);
                     btnDelete.setOnAction(e -> {
                         e.consume();
+                        if (currentEvaluation != null && currentEvaluation.getState() != EvaluationState.CONCEPTION) {
+                            notificationService.showWarning("Modification impossible", "Une évaluation imprimée ou archivée ne peut pas être modifiée.");
+                            return;
+                        }
                         questionsList.remove(item);
                     });
 
@@ -211,6 +229,9 @@ public class EvaluationBuilderController implements Initializable {
 
         questionsListView.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
+                if (currentEvaluation != null && currentEvaluation.getState() != EvaluationState.CONCEPTION) {
+                    return;
+                }
                 Question selected = questionsListView.getSelectionModel().getSelectedItem();
                 if (selected != null) {
                     showQuestionDialog(selected);
@@ -224,28 +245,59 @@ public class EvaluationBuilderController implements Initializable {
         if (currentEvaluation != null) {
             mainLayoutController.setActiveEvaluation(currentEvaluation);
         }
-        lblTitle.setText("Concepteur d'Évaluation : " + currentEvaluation.getDesignation());
+        boolean isLocked = currentEvaluation != null && currentEvaluation.getState() != EvaluationState.CONCEPTION;
+        if (isLocked) {
+            lblTitle.setText("Concepteur d'Évaluation : " + currentEvaluation.getDesignation() + " [Lecture Seule]");
+            if (lockedBanner != null) {
+                lockedBanner.setVisible(true);
+                lockedBanner.setManaged(true);
+            }
+        } else {
+            lblTitle.setText("Concepteur d'Évaluation : " + currentEvaluation.getDesignation());
+            if (lockedBanner != null) {
+                lockedBanner.setVisible(false);
+                lockedBanner.setManaged(false);
+            }
+        }
+
         txtDesignation.setText(currentEvaluation.getDesignation());
+        txtDesignation.setDisable(isLocked);
         if (comboType != null) {
             comboType.setValue(currentEvaluation.getType() != null ? currentEvaluation.getType() : Evaluation.TYPE_CONTROLE_CONTINU);
+            comboType.setDisable(isLocked);
         }
         if (currentEvaluation.getDuration() != null) {
             spinDuration.getValueFactory().setValue((int) currentEvaluation.getDuration().toMinutes());
         }
+        spinDuration.setDisable(isLocked);
         comboColumns.getSelectionModel().select(Integer.valueOf(currentEvaluation.getColumnCount()));
+        comboColumns.setDisable(isLocked);
         chkShuffleQuestions.setSelected(currentEvaluation.isQuestionShuffle());
+        chkShuffleQuestions.setDisable(isLocked);
         chkShuffleAnswers.setSelected(currentEvaluation.isAnswersShuffle());
+        chkShuffleAnswers.setDisable(isLocked);
         chkDoubleSided.setSelected(currentEvaluation.isDoubleSided());
+        chkDoubleSided.setDisable(isLocked);
 
         txtScoreCorrect.setText(String.valueOf(currentEvaluation.getDefaultScoreIfCorrect()));
+        txtScoreCorrect.setDisable(isLocked);
         txtScoreEmpty.setText(String.valueOf(currentEvaluation.getDefaultScoreIfEmpty()));
+        txtScoreEmpty.setDisable(isLocked);
         txtScoreIncorrect.setText(String.valueOf(currentEvaluation.getDefaultScoreIfIncorrect()));
+        txtScoreIncorrect.setDisable(isLocked);
+
+        if (btnAddQuestion != null) btnAddQuestion.setDisable(isLocked);
+        if (btnSave != null) btnSave.setDisable(isLocked);
 
         questionsList.setAll(currentEvaluation.getQuestions());
     }
 
     private void saveEvaluationData() {
         if (currentEvaluation == null) return;
+        if (currentEvaluation.getState() != EvaluationState.CONCEPTION) {
+            log.warn("Tentative de modification ignorée pour l'évaluation verrouillée {}", currentEvaluation.getId());
+            return;
+        }
 
         currentEvaluation.setDesignation(txtDesignation.getText().trim());
         if (comboType != null && comboType.getValue() != null) {
@@ -273,6 +325,10 @@ public class EvaluationBuilderController implements Initializable {
 
     @FXML
     public void onSave() {
+        if (currentEvaluation != null && currentEvaluation.getState() != EvaluationState.CONCEPTION) {
+            notificationService.showWarning("Modification impossible", "Cette évaluation est verrouillée (statut " + currentEvaluation.getState() + ") et ne peut plus être modifiée.");
+            return;
+        }
         saveEvaluationData();
         if (currentEvaluation != null) {
             mainLayoutController.setActiveEvaluation(currentEvaluation);
@@ -282,6 +338,10 @@ public class EvaluationBuilderController implements Initializable {
 
     @FXML
     public void onAddQuestion() {
+        if (currentEvaluation != null && currentEvaluation.getState() != EvaluationState.CONCEPTION) {
+            notificationService.showWarning("Modification impossible", "Cette évaluation est verrouillée (statut " + currentEvaluation.getState() + ") et ne peut plus être modifiée.");
+            return;
+        }
         showQuestionDialog(null);
     }
 

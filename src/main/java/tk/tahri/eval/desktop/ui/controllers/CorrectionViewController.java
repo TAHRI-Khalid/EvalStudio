@@ -1,6 +1,8 @@
 package tk.tahri.eval.desktop.ui.controllers;
 
 import javafx.application.Platform;
+import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -21,17 +23,18 @@ import tk.tahri.eval.desktop.document.dto.StudentGrade;
 import tk.tahri.eval.desktop.document.services.DocumentProcessingService;
 import tk.tahri.eval.desktop.document.services.DocumentProcessingService.ProcessingResult;
 import tk.tahri.eval.desktop.document.services.DocumentService;
-import tk.tahri.eval.desktop.model.Group;
-import tk.tahri.eval.desktop.model.Evaluation;
-import tk.tahri.eval.desktop.service.GroupService;
-import tk.tahri.eval.desktop.service.EvaluationService;
 import tk.tahri.eval.desktop.document.services.GradeService;
+import tk.tahri.eval.desktop.model.Evaluation;
+import tk.tahri.eval.desktop.model.EvaluationState;
+import tk.tahri.eval.desktop.model.Group;
+import tk.tahri.eval.desktop.service.EvaluationService;
+import tk.tahri.eval.desktop.service.GroupService;
 import tk.tahri.eval.desktop.ui.NotificationService;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.net.URL;
-import java.util.List;
+import java.time.format.DateTimeFormatter;
 import java.util.ResourceBundle;
 
 @Component
@@ -39,6 +42,22 @@ public class CorrectionViewController implements Initializable {
 
     private static final Logger log = LoggerFactory.getLogger(CorrectionViewController.class);
 
+    // 1. Vue Sélection de l'évaluation
+    @FXML private VBox evalSelectionView;
+    @FXML private Label lblEvalCount;
+    @FXML private TableView<Evaluation> evaluationsTable;
+    @FXML private TableColumn<Evaluation, String> colEvalDesignation;
+    @FXML private TableColumn<Evaluation, String> colEvalType;
+    @FXML private TableColumn<Evaluation, String> colEvalDate;
+    @FXML private TableColumn<Evaluation, String> colEvalQuestions;
+    @FXML private TableColumn<Evaluation, String> colEvalState;
+    @FXML private TableColumn<Evaluation, Void> colEvalAction;
+
+    // 2. Vue Tableau de bord de l'évaluation
+    @FXML private VBox dashboardView;
+    @FXML private Button btnBackToEvalsList;
+    @FXML private Label lblActiveEvalTitle;
+    @FXML private Label lblActiveEvalState;
     @FXML private ComboBox<Evaluation> comboEvaluations;
 
     @FXML private VBox dropZone;
@@ -77,6 +96,7 @@ public class CorrectionViewController implements Initializable {
 
     private Group currentGroup;
     private File selectedScanFile;
+    private final ObservableList<Evaluation> printedEvaluationsList = FXCollections.observableArrayList();
     private final ObservableList<StudentGrade> studentGradesList = FXCollections.observableArrayList();
 
     public CorrectionViewController(GroupService groupService,
@@ -97,21 +117,153 @@ public class CorrectionViewController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        setupEvaluationsTable();
         setupTableColumns();
         setupIcons();
         setupDropZone();
         setupListeners();
+        showSelectionView();
+    }
+
+    private void setupEvaluationsTable() {
+        colEvalDesignation.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getDesignation()));
+        colEvalDesignation.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    setStyle("-fx-font-weight: bold; -fx-text-fill: #181c20;");
+                }
+            }
+        });
+
+        colEvalType.setCellValueFactory(c -> new SimpleStringProperty(
+                c.getValue().getType() != null ? c.getValue().getType() : Evaluation.TYPE_CONTROLE_CONTINU
+        ));
+        colEvalType.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    Label badge = new Label(item);
+                    badge.getStyleClass().add("tag-badge");
+                    if (Evaluation.TYPE_FIN_MODULE.equals(item)) {
+                        badge.setStyle("-fx-background-color: #fce8e6; -fx-text-fill: #c5221f;");
+                    } else {
+                        badge.setStyle("-fx-background-color: #e8f0fe; -fx-text-fill: #1a73e8;");
+                    }
+                    setGraphic(badge);
+                    setText(null);
+                }
+            }
+        });
+
+        colEvalDate.setCellValueFactory(c -> {
+            if (c.getValue() != null && c.getValue().getCreatedAt() != null) {
+                return new SimpleStringProperty(
+                        c.getValue().getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                );
+            }
+            return new SimpleStringProperty("-");
+        });
+
+        colEvalQuestions.setCellValueFactory(c -> {
+            int qCount = (c.getValue() != null && c.getValue().getQuestions() != null) ? c.getValue().getQuestions().size() : 0;
+            return new SimpleStringProperty(qCount + " question" + (qCount > 1 ? "s" : ""));
+        });
+
+        colEvalState.setCellValueFactory(c -> {
+            if (c.getValue() != null && c.getValue().getState() != null) {
+                return new SimpleStringProperty(c.getValue().getState().name());
+            }
+            return new SimpleStringProperty("PRINTED");
+        });
+        colEvalState.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    Label badge = new Label();
+                    badge.getStyleClass().add("tag-badge");
+                    switch (item) {
+                        case "PRINTED" -> {
+                            badge.setText("Prêt pour impression");
+                            badge.setStyle("-fx-background-color: #fef3c7; -fx-text-fill: #92400e;");
+                        }
+                        case "ARCHIVED" -> {
+                            badge.setText("Copies scannées / Noté");
+                            badge.setStyle("-fx-background-color: #d1fae5; -fx-text-fill: #065f46;");
+                        }
+                        default -> {
+                            badge.setText(item);
+                            badge.setStyle("-fx-background-color: #e2e8f0; -fx-text-fill: #334155;");
+                        }
+                    }
+                    setGraphic(badge);
+                    setText(null);
+                }
+            }
+        });
+
+        colEvalAction.setCellFactory(col -> new TableCell<>() {
+            private final Button btnOpen = new Button("Ouvrir");
+
+            {
+                btnOpen.getStyleClass().add("card-action-btn");
+                btnOpen.setStyle("-fx-text-fill: #004faa; -fx-font-weight: bold;");
+                btnOpen.setGraphic(new FontIcon(Feather.ARROW_RIGHT));
+                btnOpen.setOnAction(e -> {
+                    Evaluation eval = getTableView().getItems().get(getIndex());
+                    if (eval != null) {
+                        openEvaluationDashboard(eval);
+                    }
+                });
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) {
+                    setGraphic(null);
+                } else {
+                    setGraphic(btnOpen);
+                }
+            }
+        });
+
+        // Un clic sur une évaluation dans le tableau ouvre directement son tableau de bord
+        evaluationsTable.setRowFactory(tv -> {
+            TableRow<Evaluation> row = new TableRow<>();
+            row.setOnMouseClicked(event -> {
+                if (!row.isEmpty()) {
+                    openEvaluationDashboard(row.getItem());
+                }
+            });
+            return row;
+        });
+
+        evaluationsTable.setItems(printedEvaluationsList);
     }
 
     private void setupTableColumns() {
-        colMatricule.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(c.getValue().matriculation()));
-        colNom.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(c.getValue().lastName()));
-        colPrenom.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(c.getValue().firstName()));
+        colMatricule.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().matriculation()));
+        colNom.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().lastName()));
+        colPrenom.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().firstName()));
         colQuestions.setCellValueFactory(c -> {
             StudentGrade g = c.getValue();
-            return new javafx.beans.property.SimpleStringProperty(g.correctedQuestions() + " / " + g.totalQuestions());
+            return new SimpleStringProperty(g.correctedQuestions() + " / " + g.totalQuestions());
         });
-        colScore.setCellValueFactory(c -> new javafx.beans.property.SimpleObjectProperty<>(c.getValue().score()));
+        colScore.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().score()));
         colScore.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(Double item, boolean empty) {
@@ -130,7 +282,6 @@ public class CorrectionViewController implements Initializable {
             }
         });
 
-        // Colonne d'action dans chaque ligne
         colAction.setCellFactory(col -> new TableCell<>() {
             private final Button btnCopy = new Button("Copie");
 
@@ -159,7 +310,6 @@ public class CorrectionViewController implements Initializable {
             }
         });
 
-        // Double-clic sur une ligne du tableau pour ouvrir directement la copie annotée
         gradesTable.setRowFactory(tv -> {
             TableRow<StudentGrade> row = new TableRow<>();
             row.setOnMouseClicked(event -> {
@@ -177,6 +327,7 @@ public class CorrectionViewController implements Initializable {
     }
 
     private void setupIcons() {
+        if (btnBackToEvalsList != null) btnBackToEvalsList.setGraphic(new FontIcon(Feather.ARROW_LEFT));
         if (btnBrowseFile != null) btnBrowseFile.setGraphic(new FontIcon(Feather.FOLDER));
         if (btnStartCorrection != null) btnStartCorrection.setGraphic(new FontIcon(Feather.PLAY));
         if (btnViewStudentCopy != null) btnViewStudentCopy.setGraphic(new FontIcon(Feather.EYE));
@@ -214,11 +365,19 @@ public class CorrectionViewController implements Initializable {
     private void setupListeners() {
         comboEvaluations.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
+                if (lblActiveEvalTitle != null) {
+                    lblActiveEvalTitle.setText(newVal.getDesignation());
+                }
+                updateActiveEvalStateBadge(newVal.getState());
                 if (mainLayoutController != null) {
                     mainLayoutController.setActiveEvaluation(newVal);
                 }
                 loadDashboard(newVal.getId());
             } else {
+                if (lblActiveEvalTitle != null) {
+                    lblActiveEvalTitle.setText("Tableau de bord de l'évaluation");
+                }
+                updateActiveEvalStateBadge(null);
                 if (mainLayoutController != null) {
                     mainLayoutController.clearActiveEvaluation();
                 }
@@ -230,10 +389,85 @@ public class CorrectionViewController implements Initializable {
             if (btnViewStudentCopy != null) {
                 btnViewStudentCopy.setDisable(n == null || n.correctedPages() == 0);
             }
-            if (n != null && currentGroup != null) {
+            if (n != null && currentGroup != null && mainLayoutController != null) {
                 mainLayoutController.setStatus("Étudiant sélectionné : " + n.fullName() + " • Note : " + (n.score() != null ? String.format("%.2f", n.score()) : "-"));
             }
         });
+    }
+
+    public void openEvaluationDashboard(Evaluation eval) {
+        if (eval == null) return;
+        showDashboardView();
+
+        if (lblActiveEvalTitle != null) {
+            lblActiveEvalTitle.setText(eval.getDesignation());
+        }
+        updateActiveEvalStateBadge(eval.getState());
+
+        if (comboEvaluations.getSelectionModel().getSelectedItem() == eval) {
+            loadDashboard(eval.getId());
+            if (mainLayoutController != null) {
+                mainLayoutController.setActiveEvaluation(eval);
+            }
+        } else {
+            comboEvaluations.getSelectionModel().select(eval);
+        }
+    }
+
+    @FXML
+    public void onBackToEvaluationsList() {
+        showSelectionView();
+    }
+
+    public void showSelectionView() {
+        if (dashboardView != null) {
+            dashboardView.setVisible(false);
+            dashboardView.setManaged(false);
+        }
+        if (evalSelectionView != null) {
+            evalSelectionView.setVisible(true);
+            evalSelectionView.setManaged(true);
+        }
+        if (mainLayoutController != null) {
+            mainLayoutController.clearActiveEvaluation();
+        }
+        if (currentGroup != null) {
+            loadEvaluationsForGroup(currentGroup.getId());
+        }
+    }
+
+    public void showDashboardView() {
+        if (evalSelectionView != null) {
+            evalSelectionView.setVisible(false);
+            evalSelectionView.setManaged(false);
+        }
+        if (dashboardView != null) {
+            dashboardView.setVisible(true);
+            dashboardView.setManaged(true);
+        }
+    }
+
+    private void updateActiveEvalStateBadge(EvaluationState state) {
+        if (lblActiveEvalState == null) return;
+        if (state == null) {
+            lblActiveEvalState.setText("");
+            lblActiveEvalState.setStyle("");
+            return;
+        }
+        switch (state) {
+            case PRINTED -> {
+                lblActiveEvalState.setText("Prêt pour impression");
+                lblActiveEvalState.setStyle("-fx-background-color: #fef3c7; -fx-text-fill: #92400e;");
+            }
+            case ARCHIVED -> {
+                lblActiveEvalState.setText("Copies scannées / Noté");
+                lblActiveEvalState.setStyle("-fx-background-color: #d1fae5; -fx-text-fill: #065f46;");
+            }
+            default -> {
+                lblActiveEvalState.setText(state.name());
+                lblActiveEvalState.setStyle("-fx-background-color: #e2e8f0; -fx-text-fill: #334155;");
+            }
+        }
     }
 
     public Evaluation getSelectedEvaluation() {
@@ -245,9 +479,14 @@ public class CorrectionViewController implements Initializable {
         if (group != null) {
             loadEvaluationsForGroup(group.getId());
         } else {
+            printedEvaluationsList.clear();
             comboEvaluations.getItems().clear();
             clearDashboard();
+            if (lblEvalCount != null) {
+                lblEvalCount.setText("0 épreuve(s) prête(s)");
+            }
         }
+        showSelectionView();
     }
 
     public void setCourse(Group course) { setGroup(course); }
@@ -269,12 +508,24 @@ public class CorrectionViewController implements Initializable {
     public void selectCourse(String courseId) { selectGroup(courseId); }
 
     public void loadEvaluationsForGroup(String groupId) {
-        var evals = evaluationService.getEvaluationsByGroup(groupId);
-        comboEvaluations.setItems(FXCollections.observableArrayList(evals));
-        if (!evals.isEmpty()) {
-            comboEvaluations.getSelectionModel().selectFirst();
-        } else {
+        if (groupId == null) {
+            printedEvaluationsList.clear();
+            comboEvaluations.getItems().clear();
             clearDashboard();
+            if (lblEvalCount != null) {
+                lblEvalCount.setText("0 épreuve(s) prête(s)");
+            }
+            return;
+        }
+        var evals = evaluationService.getEvaluationsByGroup(groupId);
+        var readyEvals = evals.stream()
+                .filter(e -> e.getState() == EvaluationState.PRINTED || e.getState() == EvaluationState.ARCHIVED)
+                .toList();
+
+        printedEvaluationsList.setAll(readyEvals);
+        comboEvaluations.setItems(FXCollections.observableArrayList(readyEvals));
+        if (lblEvalCount != null) {
+            lblEvalCount.setText(readyEvals.size() + " épreuve(s) prête(s)");
         }
     }
 
@@ -338,6 +589,11 @@ public class CorrectionViewController implements Initializable {
             ProcessingResult res = task.getValue();
 
             loadDashboard(eval.getId());
+            Evaluation reloaded = evaluationService.getEvaluation(eval.getId());
+            if (reloaded != null) {
+                updateActiveEvalStateBadge(reloaded.getState());
+            }
+
             notificationService.showInfo("Correction terminée",
                     "Scan traité avec succès !\n" +
                     "Pages analysées : " + res.totalPages() + "\n" +
@@ -376,7 +632,6 @@ public class CorrectionViewController implements Initializable {
                 if (btnExportPdfReport != null) btnExportPdfReport.setDisable(!hasGrades);
                 if (btnViewAnnotatedPdf != null) btnViewAnnotatedPdf.setDisable(!hasGrades);
 
-                // Notifier le MainLayoutController
                 evaluationService.getEvaluation(evaluationId);
             } catch (Exception e) {
                 log.error("Erreur lors du chargement des statistiques", e);
@@ -517,15 +772,30 @@ public class CorrectionViewController implements Initializable {
 
     public void selectGroupAndEvaluation(String groupId, String evaluationId) {
         if (groupId != null) {
-            selectGroup(groupId);
+            Group g = groupService.getGroup(groupId);
+            if (g != null) {
+                this.currentGroup = g;
+                loadEvaluationsForGroup(g.getId());
+            }
         }
         if (evaluationId != null) {
-            for (Evaluation e : comboEvaluations.getItems()) {
+            Evaluation target = null;
+            for (Evaluation e : printedEvaluationsList) {
                 if (e.getId().equals(evaluationId)) {
-                    comboEvaluations.getSelectionModel().select(e);
+                    target = e;
                     break;
                 }
             }
+            if (target == null) {
+                target = evaluationService.getEvaluation(evaluationId);
+            }
+            if (target != null) {
+                openEvaluationDashboard(target);
+            } else {
+                showSelectionView();
+            }
+        } else {
+            showSelectionView();
         }
     }
 

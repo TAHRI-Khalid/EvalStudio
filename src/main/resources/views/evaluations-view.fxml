@@ -44,5 +44,12 @@
         <columnResizePolicy>
             <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
         </columnResizePolicy>
+        <placeholder>
+            <VBox alignment="CENTER" spacing="10">
+                <FontIcon iconLiteral="fth-file-plus" iconColor="#74777f" iconSize="36"/>
+                <Label text="Aucune évaluation en cours de conception" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #424753;"/>
+                <Label text="Cliquez sur « Nouvelle évaluation » pour créer un nouveau sujet d'examen." style="-fx-text-fill: #74777f; -fx-font-size: 12px;"/>
+            </VBox>
+        </placeholder>
     </TableView>
 </VBox>

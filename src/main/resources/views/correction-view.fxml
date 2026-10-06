@@ -50,21 +50,13 @@
             <Label fx:id="lblActiveEvalState" styleClass="tag-badge"/>
             <Pane HBox.hgrow="ALWAYS"/>
             <Button fx:id="btnOpenPdfFromDashboard" text="Voir le PDF généré" onAction="#onOpenGeneratedPdf"/>
+            <Button fx:id="btnStartCorrection" text="Scanner et corriger..." styleClass="btn-primary" onAction="#onStartCorrection"/>
         </HBox>
 
-        <!-- Zone Glisser-Déposer pour les scans -->
-        <VBox fx:id="dropZone" spacing="8" styleClass="drop-zone" style="-fx-padding: 12 16;">
-            <HBox alignment="CENTER" spacing="8">
-                <FontIcon iconLiteral="fth-upload-cloud" iconColor="#004faa" iconSize="20"/>
-                <Label fx:id="lblDropZone" text="Glissez-déposez le fichier PDF des copies scannées ici" style="-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: #181c20;"/>
-            </HBox>
-            <Label text="Téléphone ou scanner à plat, ordre indifférent • Détection automatique par repères et codes PDF417" style="-fx-text-fill: #424753; -fx-font-size: 11px;"/>
-            <HBox alignment="CENTER" spacing="12">
-                <Button fx:id="btnBrowseFile" text="Parcourir un fichier..." onAction="#onBrowseFile"/>
-                <Button fx:id="btnStartCorrection" text="Lancer la correction optique" disable="true" styleClass="btn-primary" onAction="#onStartCorrection"/>
-            </HBox>
-            <ProgressBar fx:id="progressBar" maxWidth="600" visible="false" progress="0.0"/>
-            <Label fx:id="lblProgressStatus" text="" visible="false" style="-fx-font-size: 11px; -fx-text-fill: #424753;"/>
+        <!-- Indicateur de progression du scan et de la correction optique -->
+        <VBox fx:id="progressBox" spacing="4" visible="false" managed="false">
+            <ProgressBar fx:id="progressBar" maxWidth="Infinity" progress="0.0"/>
+            <Label fx:id="lblProgressStatus" text="Traitement en cours..." style="-fx-font-size: 11px; -fx-text-fill: #424753;"/>
         </VBox>
 
         <!-- Cartes KPI Statistiques -->

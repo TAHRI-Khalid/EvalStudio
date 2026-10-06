@@ -70,6 +70,7 @@ public class CorrectionViewController implements Initializable {
     @FXML private Button btnBrowseFile;
     @FXML private Button btnStartCorrection;
 
+    @FXML private VBox progressBox;
     @FXML private ProgressBar progressBar;
     @FXML private Label lblProgressStatus;
 
@@ -372,7 +373,7 @@ public class CorrectionViewController implements Initializable {
         if (btnOpenPdfFromList != null) btnOpenPdfFromList.setGraphic(new FontIcon(Feather.FILE_TEXT));
         if (btnOpenPdfFromDashboard != null) btnOpenPdfFromDashboard.setGraphic(new FontIcon(Feather.FILE_TEXT));
         if (btnBrowseFile != null) btnBrowseFile.setGraphic(new FontIcon(Feather.FOLDER));
-        if (btnStartCorrection != null) btnStartCorrection.setGraphic(new FontIcon(Feather.PLAY));
+        if (btnStartCorrection != null) btnStartCorrection.setGraphic(new FontIcon(Feather.CHECK_CIRCLE));
         if (btnViewStudentCopy != null) btnViewStudentCopy.setGraphic(new FontIcon(Feather.EYE));
         if (btnExportExcel != null) btnExportExcel.setGraphic(new FontIcon(Feather.FILE_TEXT));
         if (btnExportPdfReport != null) btnExportPdfReport.setGraphic(new FontIcon(Feather.PRINTER));
@@ -383,6 +384,7 @@ public class CorrectionViewController implements Initializable {
     }
 
     private void setupDropZone() {
+        if (dropZone == null) return;
         dropZone.setOnDragOver(event -> {
             if (event.getGestureSource() != dropZone && event.getDragboard().hasFiles()) {
                 event.acceptTransferModes(TransferMode.COPY_OR_MOVE);
@@ -669,8 +671,12 @@ public class CorrectionViewController implements Initializable {
 
     private void setScanFile(File file) {
         this.selectedScanFile = file;
-        lblDropZone.setText("Fichier sélectionné : " + file.getName() + " (" + (file.length() / 1024) + " Ko)");
-        btnStartCorrection.setDisable(false);
+        if (lblDropZone != null) {
+            lblDropZone.setText("Fichier sélectionné : " + file.getName() + " (" + (file.length() / 1024) + " Ko)");
+        }
+        if (btnStartCorrection != null) {
+            btnStartCorrection.setDisable(false);
+        }
     }
 
     @FXML
@@ -678,7 +684,8 @@ public class CorrectionViewController implements Initializable {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Sélectionner les scans des copies d'examen");
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Fichiers PDF ou Images", "*.pdf", "*.png", "*.jpg", "*.jpeg"));
-        File file = chooser.showOpenDialog(dropZone.getScene().getWindow());
+        javafx.stage.Window window = dashboardView != null && dashboardView.getScene() != null ? dashboardView.getScene().getWindow() : null;
+        File file = chooser.showOpenDialog(window);
         if (file != null) {
             setScanFile(file);
         }
@@ -691,19 +698,34 @@ public class CorrectionViewController implements Initializable {
             notificationService.showWarning("Évaluation requise", "Veuillez sélectionner une évaluation.");
             return;
         }
-        if (selectedScanFile == null || !selectedScanFile.exists()) {
-            notificationService.showWarning("Fichier requis", "Veuillez choisir un fichier de scans.");
-            return;
-        }
         if (currentGroup == null) {
             notificationService.showWarning("Groupe requis", "Veuillez d'abord sélectionner un groupe.");
             return;
         }
 
-        btnStartCorrection.setDisable(true);
-        progressBar.setVisible(true);
-        lblProgressStatus.setVisible(true);
-        lblProgressStatus.setText("Initialisation de la reconnaissance optique...");
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Sélectionner le fichier des copies scannées");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Fichiers PDF ou Images (*.pdf, *.png, *.jpg)", "*.pdf", "*.png", "*.jpg", "*.jpeg"));
+        javafx.stage.Window window = dashboardView != null && dashboardView.getScene() != null ? dashboardView.getScene().getWindow() : null;
+        File file = chooser.showOpenDialog(window);
+        if (file == null) {
+            return;
+        }
+        this.selectedScanFile = file;
+
+        if (btnStartCorrection != null) btnStartCorrection.setDisable(true);
+        if (progressBox != null) {
+            progressBox.setVisible(true);
+            progressBox.setManaged(true);
+        }
+        if (progressBar != null) {
+            progressBar.setVisible(true);
+            progressBar.setProgress(0.0);
+        }
+        if (lblProgressStatus != null) {
+            lblProgressStatus.setVisible(true);
+            lblProgressStatus.setText("Initialisation de la reconnaissance optique de " + file.getName() + "...");
+        }
 
         Task<ProcessingResult> task = new Task<>() {
             @Override
@@ -712,16 +734,24 @@ public class CorrectionViewController implements Initializable {
                         currentGroup.getId(),
                         eval.getId(),
                         selectedScanFile,
-                        msg -> Platform.runLater(() -> lblProgressStatus.setText(msg)),
-                        progress -> Platform.runLater(() -> progressBar.setProgress(progress))
+                        msg -> Platform.runLater(() -> {
+                            if (lblProgressStatus != null) lblProgressStatus.setText(msg);
+                        }),
+                        progress -> Platform.runLater(() -> {
+                            if (progressBar != null) progressBar.setProgress(progress);
+                        })
                 );
             }
         };
 
         task.setOnSucceeded(e -> {
-            btnStartCorrection.setDisable(false);
-            progressBar.setVisible(false);
-            lblProgressStatus.setVisible(false);
+            if (btnStartCorrection != null) btnStartCorrection.setDisable(false);
+            if (progressBox != null) {
+                progressBox.setVisible(false);
+                progressBox.setManaged(false);
+            }
+            if (progressBar != null) progressBar.setVisible(false);
+            if (lblProgressStatus != null) lblProgressStatus.setVisible(false);
             ProcessingResult res = task.getValue();
 
             loadDashboard(eval.getId());
@@ -738,9 +768,13 @@ public class CorrectionViewController implements Initializable {
         });
 
         task.setOnFailed(e -> {
-            btnStartCorrection.setDisable(false);
-            progressBar.setVisible(false);
-            lblProgressStatus.setVisible(false);
+            if (btnStartCorrection != null) btnStartCorrection.setDisable(false);
+            if (progressBox != null) {
+                progressBox.setVisible(false);
+                progressBox.setManaged(false);
+            }
+            if (progressBar != null) progressBar.setVisible(false);
+            if (lblProgressStatus != null) lblProgressStatus.setVisible(false);
             Throwable ex = task.getException();
             log.error("Échec de la correction optique", ex);
             notificationService.showError("Erreur d'analyse", "Impossible de traiter le fichier : " + ex.getMessage());

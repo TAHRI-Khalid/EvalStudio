@@ -222,6 +222,24 @@
     -fx-text-fill: -color-accent-emphasis;
 }
 
+.card-action-btn.active-filter,
+.button.active-filter {
+    -fx-background-color: -color-accent-emphasis;
+    -fx-text-fill: -color-fg-emphasis;
+    -fx-font-weight: bold;
+}
+
+.card-action-btn.active-filter .text,
+.button.active-filter .text {
+    -fx-fill: -color-fg-emphasis;
+}
+
+.card-action-btn.active-filter .ikonli-font-icon,
+.button.active-filter .ikonli-font-icon {
+    -fx-icon-color: -color-fg-emphasis;
+    -fx-fill: -color-fg-emphasis;
+}
+
 /* Bannière de cours active */
 .active-course-banner {
     -fx-background-color: -color-bg-default;

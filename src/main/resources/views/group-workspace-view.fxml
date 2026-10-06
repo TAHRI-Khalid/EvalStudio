@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="tk.tahri.eval.desktop.ui.controllers.GroupWorkspaceViewController"
+      spacing="0" VBox.vgrow="ALWAYS" style="-fx-padding: 14 24 20 24; -fx-background-color: #f7f9ff;">
+
+    <!-- TabPane regroupant Étudiants, Évaluations et Correction -->
+    <TabPane fx:id="workspaceTabPane" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS"
+             styleClass="group-tab-pane course-tab-pane">
+        <tabs>
+            <Tab fx:id="tabStudents" text="Étudiants &amp; Inscriptions" closable="false"/>
+            <Tab fx:id="tabEvaluations" text="Évaluations &amp; Examens" closable="false"/>
+            <Tab fx:id="tabCorrection" text="Correction &amp; Scanner" closable="false"/>
+        </tabs>
+    </TabPane>
+</VBox>

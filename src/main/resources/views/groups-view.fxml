@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="tk.tahri.eval.desktop.ui.controllers.GroupsViewController"
+            fitToWidth="true" styleClass="main-content-scroll" hbarPolicy="NEVER">
+
+    <VBox spacing="20" style="-fx-padding: 24 32 32 32;">
+        <!-- En-tête de vue -->
+        <HBox alignment="CENTER_LEFT" spacing="16">
+            <VBox HBox.hgrow="ALWAYS" spacing="4">
+                <Label text="Mes groupes" styleClass="page-title"/>
+                <Label text="Gérez vos groupes, vos évaluations et vos étudiants • Double-cliquez pour ouvrir les évaluations" styleClass="page-subtitle"/>
+            </VBox>
+            <TextField fx:id="searchField" promptText="Rechercher par nom, filière, établissement..." prefWidth="280" style="-fx-background-radius: 8px; -fx-padding: 8 12;"/>
+            <Button fx:id="btnNewGroup" text="Nouveau groupe" styleClass="btn-primary" onAction="#onNewGroup"/>
+        </HBox>
+
+        <!-- Message d'état vide -->
+        <VBox fx:id="emptyStateBox" alignment="CENTER" spacing="12" visible="false" managed="false" style="-fx-padding: 60 0;">
+            <HBox alignment="CENTER" style="-fx-background-color: #ebeef4; -fx-background-radius: 32px; -fx-min-width: 64px; -fx-min-height: 64px;">
+                <FontIcon iconLiteral="fth-users" iconColor="#424753" iconSize="28"/>
+            </HBox>
+            <Label text="Aucun groupe" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #181c20;"/>
+            <Label text="Créez votre premier groupe pour commencer" style="-fx-text-fill: #424753; -fx-font-size: 13px;"/>
+            <Button text="Créer un groupe" styleClass="btn-primary" onAction="#onNewGroup"/>
+        </VBox>
+
+        <!-- Grille de Cartes de Groupes -->
+        <FlowPane fx:id="groupsFlowPane" hgap="20" vgap="20" VBox.vgrow="ALWAYS"/>
+    </VBox>
+</ScrollPane>

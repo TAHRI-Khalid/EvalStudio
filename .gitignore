@@ -1,0 +1,35 @@
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+
+# Local database & logs
+data/
+*.db
+*.log
+
+# Generated evaluation uploads & temporary files
+upload/evaluations/
+upload/question_images/*
+upload/group_logos_sm/*
+upload/group_logos_xm/*
+upload/course_logos_sm/*
+upload/course_logos_xm/*
+!upload/**/.gitkeep
+*.tmp
+
+# IDE & OS
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+.DS_Store
+Thumbs.db

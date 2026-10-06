@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="tk.tahri.eval.desktop.ui.controllers.MainLayoutController"
+            stylesheets="@../css/style.css"
+            prefWidth="1280" prefHeight="820">
+
+    <!-- Header Supérieur avec Bannière du cours actif intégrée -->
+    <top>
+        <HBox alignment="CENTER_LEFT" spacing="12" styleClass="top-header" style="-fx-padding: 8 20; -fx-background-color: #ffffff; -fx-border-color: #c2c6d5; -fx-border-width: 0 0 1 0;">
+            <!-- Brand Logo & Title -->
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <HBox alignment="CENTER" styleClass="brand-badge">
+                    <FontIcon iconLiteral="fth-book-open" iconColor="white" iconSize="18"/>
+                </HBox>
+                <Label text="Eval" styleClass="brand-title"/>
+            </HBox>
+
+            <!-- Bouton Catalogue Mes groupes -->
+            <Button fx:id="btnAllCourses" text="Mes groupes" styleClass="card-action-btn" onAction="#showGroupsView"
+                    style="-fx-font-weight: 600; -fx-padding: 6 12;">
+                <graphic>
+                    <FontIcon iconLiteral="fth-grid" iconSize="13"/>
+                </graphic>
+            </Button>
+
+            <Separator fx:id="headerSeparator" orientation="VERTICAL" style="-fx-padding: 0 4;"/>
+
+            <!-- Bannière contextuelle du groupe actif -->
+            <HBox fx:id="courseBannerBox" alignment="CENTER_LEFT" spacing="10">
+                <HBox fx:id="bannerAvatarBox" alignment="CENTER"
+                      style="-fx-background-color: #004faa; -fx-background-radius: 8px; -fx-min-width: 34px; -fx-min-height: 34px; -fx-max-width: 34px; -fx-max-height: 34px;">
+                    <FontIcon iconLiteral="fth-users" iconColor="white" iconSize="16"/>
+                </HBox>
+                <VBox alignment="CENTER_LEFT" spacing="1">
+                    <Label fx:id="lblCourseTitle" text="Sélectionnez un groupe"
+                           style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #181c20;"/>
+                    <Label fx:id="lblCourseSubtitle" text="Filière • Année"
+                           style="-fx-font-size: 11px; -fx-text-fill: #424753;"/>
+                </VBox>
+            </HBox>
+
+            <!-- Séparateur vertical entre la bannière du cours et la bannière de l'évaluation -->
+            <Separator fx:id="evalSeparator" orientation="VERTICAL" style="-fx-padding: 0 4;" visible="false" managed="false"/>
+
+            <!-- Bannière contextuelle de l'évaluation active -->
+            <HBox fx:id="evaluationBannerBox" alignment="CENTER_LEFT" spacing="10" visible="false" managed="false">
+                <HBox fx:id="evalAvatarBox" alignment="CENTER"
+                      style="-fx-background-color: #555f71; -fx-background-radius: 8px; -fx-min-width: 34px; -fx-min-height: 34px; -fx-max-width: 34px; -fx-max-height: 34px;">
+                    <FontIcon iconLiteral="fth-file-text" iconColor="white" iconSize="16"/>
+                </HBox>
+                <VBox alignment="CENTER_LEFT" spacing="1">
+                    <Label fx:id="lblEvaluationTitle" text="Évaluation"
+                           style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #004faa;"/>
+                    <Label fx:id="lblEvaluationSubtitle" text="Détails de l'évaluation"
+                           style="-fx-font-size: 11px; -fx-text-fill: #424753;"/>
+                </VBox>
+            </HBox>
+
+            <!-- Espace flexible garantissant que Paramètres reste toujours à l'extrême droite -->
+            <Region HBox.hgrow="ALWAYS"/>
+
+            <!-- Bouton Paramètres toujours aligné à droite -->
+            <Button fx:id="btnSettings" styleClass="card-action-btn" onAction="#showSettingsView">
+                <tooltip><Tooltip text="Paramètres de l'application"/></tooltip>
+                <graphic>
+                    <FontIcon iconLiteral="fth-settings" iconSize="15"/>
+                </graphic>
+            </Button>
+        </HBox>
+    </top>
+
+    <!-- Zone Centrale Dynamique -->
+    <center>
+        <StackPane fx:id="contentArea" styleClass="content-container">
+            <!-- Les vues sont injectées ici dynamiquement -->
+        </StackPane>
+    </center>
+
+    <!-- Barre d'état discrète -->
+    <bottom>
+        <HBox spacing="10" alignment="CENTER_LEFT" style="-fx-padding: 4 20; -fx-background-color: #ffffff; -fx-border-color: #c2c6d5 transparent transparent transparent; -fx-border-width: 1 0 0 0;">
+            <Label fx:id="statusLabel" text="Prêt • Base de données locale H2 active" style="-fx-font-size: 11px; -fx-text-fill: #424753;"/>
+        </HBox>
+    </bottom>
+</BorderPane>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="tk.tahri.eval.desktop.ui.controllers.EvaluationsViewController"
+      spacing="14" VBox.vgrow="ALWAYS" style="-fx-padding: 14 0 0 0;">
+
+    <!-- En-tête de vue et bouton Nouvelle Évaluation -->
+    <HBox alignment="CENTER_LEFT" spacing="16">
+        <VBox HBox.hgrow="ALWAYS" spacing="2">
+            <Label text="Évaluations &amp; Examens" styleClass="page-title"/>
+            <Label text="Créez vos sujets, configurez vos barèmes et générez les copies d'examen • Double-cliquez pour ouvrir" styleClass="page-subtitle"/>
+        </VBox>
+        <Button fx:id="btnNewEval" text="Nouvelle évaluation" styleClass="btn-primary" onAction="#onNewEvaluation"/>
+    </HBox>
+
+    <!-- Barre d'outils d'actions sur l'évaluation sélectionnée -->
+    <HBox alignment="CENTER_LEFT" spacing="10">
+        <Button fx:id="btnGeneratePdf" text="Générer les copies PDF" disable="true" style="-fx-font-weight: bold;" onAction="#onGeneratePdf"/>
+        <Button fx:id="btnOpenPdf" text="Voir le PDF généré" disable="true" onAction="#onOpenPdf"/>
+        <Button fx:id="btnGoToCorrection" text="Correction &amp; Scanner" disable="true" style="-fx-text-fill: #004faa; -fx-font-weight: bold;" onAction="#onGoToCorrection"/>
+    </HBox>
+
+    <!-- Indicateur de progression PDF -->
+    <VBox spacing="4">
+        <ProgressBar fx:id="progressBar" maxWidth="Infinity" visible="false" progress="0.0"/>
+        <Label fx:id="lblProgress" text="" visible="false" style="-fx-font-size: 11px; -fx-text-fill: #424753;"/>
+    </VBox>
+
+    <!-- Tableau des Évaluations prenant tout l'espace disponible -->
+    <TableView fx:id="evalTable" VBox.vgrow="ALWAYS" maxHeight="Infinity" maxWidth="Infinity" minHeight="200" styleClass="table-view">
+        <columns>
+            <TableColumn fx:id="colDesignation" text="Intitulé de l'évaluation" prefWidth="280" minWidth="180"/>
+            <TableColumn fx:id="colType" text="Type d'évaluation" prefWidth="200" minWidth="140"/>
+            <TableColumn fx:id="colDate" text="Date de création" prefWidth="130" minWidth="110" maxWidth="150"/>
+            <TableColumn fx:id="colState" text="Statut" prefWidth="130" minWidth="110" maxWidth="160"/>
+            <TableColumn fx:id="colQuestions" text="Questions" prefWidth="100" minWidth="80" maxWidth="120"/>
+            <TableColumn fx:id="colActions" text="Actions" prefWidth="150" minWidth="140" maxWidth="170" style="-fx-alignment: CENTER;"/>
+        </columns>
+        <columnResizePolicy>
+            <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+        </columnResizePolicy>
+    </TableView>
+</VBox>

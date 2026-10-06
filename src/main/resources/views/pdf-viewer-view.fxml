@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="tk.tahri.eval.desktop.ui.controllers.PdfViewerController"
+      spacing="0" VBox.vgrow="ALWAYS" style="-fx-background-color: #ebeef4;">
+
+    <!-- Barre d'outils unique et compacte (aucune perte de place verticale) -->
+    <HBox alignment="CENTER_LEFT" spacing="8"
+          style="-fx-background-color: #ffffff; -fx-padding: 6 16; -fx-border-color: #c2c6d5; -fx-border-width: 0 0 1 0; -fx-min-height: 44px; -fx-max-height: 44px;">
+
+        <!-- Bouton Retour -->
+        <Button fx:id="btnBack" text="← Retour" styleClass="back-link" onAction="#onBack"
+                style="-fx-font-size: 13px; -fx-font-weight: bold;"/>
+
+        <Separator orientation="VERTICAL" style="-fx-padding: 0 4;"/>
+
+        <!-- Titre et sous-titre compacts -->
+        <VBox alignment="CENTER_LEFT" spacing="1" maxWidth="260" HBox.hgrow="NEVER">
+            <Label fx:id="lblTitle" text="Visualiseur PDF"
+                   style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #181c20; -fx-ellipsis-string: '...';"/>
+            <Label fx:id="lblSubtitle" text="Chargement..."
+                   style="-fx-font-size: 11px; -fx-text-fill: #424753; -fx-ellipsis-string: '...';"/>
+        </VBox>
+
+        <Pane HBox.hgrow="ALWAYS"/>
+
+        <!-- Contrôles de Zoom & Rotation -->
+        <HBox alignment="CENTER" spacing="3">
+            <Button fx:id="btnZoomOut" onAction="#onZoomOut" styleClass="card-action-btn">
+                <tooltip><Tooltip text="Zoom arrière"/></tooltip>
+                <graphic><FontIcon iconLiteral="fth-zoom-out" iconSize="13"/></graphic>
+            </Button>
+            <Label fx:id="lblZoom" text="100%" alignment="CENTER"
+                   style="-fx-min-width: 44px; -fx-font-weight: 600; -fx-font-size: 11px; -fx-text-fill: #181c20;"/>
+            <Button fx:id="btnZoomIn" onAction="#onZoomIn" styleClass="card-action-btn">
+                <tooltip><Tooltip text="Zoom avant"/></tooltip>
+                <graphic><FontIcon iconLiteral="fth-zoom-in" iconSize="13"/></graphic>
+            </Button>
+            <Button fx:id="btnFitWidth" text="Largeur" onAction="#onFitWidth" styleClass="card-action-btn">
+                <tooltip><Tooltip text="Ajuster à la largeur de la fenêtre"/></tooltip>
+                <graphic><FontIcon iconLiteral="fth-maximize-2" iconSize="11"/></graphic>
+            </Button>
+            <Button fx:id="btnActualSize" text="100%" onAction="#onActualSize" styleClass="card-action-btn">
+                <tooltip><Tooltip text="Taille réelle"/></tooltip>
+            </Button>
+            <Button fx:id="btnRotate" onAction="#onRotate" styleClass="card-action-btn">
+                <tooltip><Tooltip text="Pivoter de 90°"/></tooltip>
+                <graphic><FontIcon iconLiteral="fth-rotate-cw" iconSize="12"/></graphic>
+            </Button>
+        </HBox>
+
+        <Pane HBox.hgrow="ALWAYS"/>
+
+        <!-- Actions Fichier -->
+        <HBox alignment="CENTER_RIGHT" spacing="6">
+            <Button fx:id="btnExport" text="Enregistrer" styleClass="card-action-btn" onAction="#onExport">
+                <graphic><FontIcon iconLiteral="fth-download" iconSize="13"/></graphic>
+            </Button>
+            <Button fx:id="btnPrint" text="Imprimer" styleClass="card-action-btn" onAction="#onPrint">
+                <graphic><FontIcon iconLiteral="fth-printer" iconSize="13"/></graphic>
+            </Button>
+            <Button fx:id="btnExternalViewer" text="Externe" styleClass="card-action-btn" onAction="#onExternalViewer">
+                <tooltip><Tooltip text="Ouvrir dans le lecteur PDF externe du système"/></tooltip>
+                <graphic><FontIcon iconLiteral="fth-external-link" iconSize="13"/></graphic>
+            </Button>
+        </HBox>
+    </HBox>
+
+    <!-- Zone d'affichage du document : toutes les pages les unes sous les autres -->
+    <ScrollPane fx:id="pdfScrollPane" VBox.vgrow="ALWAYS" fitToWidth="true" fitToHeight="false"
+                style="-fx-background: #d8dce4; -fx-background-color: #d8dce4; -fx-padding: 0;">
+        <StackPane fx:id="imageContainer" alignment="TOP_CENTER" VBox.vgrow="ALWAYS"
+                   style="-fx-background-color: transparent; -fx-padding: 16 0 24 0;">
+            <VBox fx:id="pagesContainer" alignment="TOP_CENTER" spacing="16"
+                  style="-fx-background-color: transparent;"/>
+            <ProgressIndicator fx:id="loadingIndicator" maxWidth="44" maxHeight="44" visible="false"
+                               style="-fx-padding: 60 0 0 0;"/>
+        </StackPane>
+    </ScrollPane>
+</VBox>

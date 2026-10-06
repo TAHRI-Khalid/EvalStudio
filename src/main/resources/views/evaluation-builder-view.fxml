@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="tk.tahri.eval.desktop.ui.controllers.EvaluationBuilderController"
+      spacing="16" VBox.vgrow="ALWAYS" style="-fx-padding: 24 32 32 32;">
+
+    <!-- En-tête -->
+    <HBox alignment="CENTER_LEFT" spacing="12" styleClass="view-header">
+        <Button fx:id="btnBack" text="← Retour" styleClass="back-link" onAction="#onBack"/>
+        <VBox HBox.hgrow="ALWAYS">
+            <Label fx:id="lblTitle" text="Concepteur d'Évaluation" styleClass="page-title"/>
+        </VBox>
+        <Button fx:id="btnAddQuestion" text="Ajouter une question" onAction="#onAddQuestion"/>
+        <Button fx:id="btnPreviewDraft" text="Aperçu Brouillon PDF" onAction="#onPreviewDraft"/>
+        <Button fx:id="btnSave" text="Enregistrer" styleClass="btn-primary" onAction="#onSave"/>
+    </HBox>
+
+    <!-- SplitPane Paramètres & Questions -->
+    <SplitPane orientation="HORIZONTAL" dividerPositions="0.32" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent;">
+        <!-- Volet de Gauche : Paramètres de l'épreuve -->
+        <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-padding: 0 10 0 0;">
+            <VBox spacing="14" styleClass="card">
+                <Label text="Configuration Générale" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+
+                <VBox spacing="4">
+                    <Label text="Désignation :"/>
+                    <TextField fx:id="txtDesignation" promptText="Ex : Évaluation Mi-Semestre"/>
+                </VBox>
+
+                <VBox spacing="4">
+                    <Label text="Type d'évaluation :"/>
+                    <ComboBox fx:id="comboType" maxWidth="Infinity"/>
+                </VBox>
+
+                <VBox spacing="4">
+                    <Label text="Durée (minutes) :"/>
+                    <Spinner fx:id="spinDuration" editable="true" maxWidth="Infinity"/>
+                </VBox>
+
+                <VBox spacing="4">
+                    <Label text="Mise en page (colonnes) :"/>
+                    <ComboBox fx:id="comboColumns" maxWidth="Infinity"/>
+                </VBox>
+
+                <Separator/>
+
+                <Label text="Options d'impression" style="-fx-font-weight: bold;"/>
+                <CheckBox fx:id="chkShuffleQuestions" text="Mélanger l'ordre des questions"/>
+                <CheckBox fx:id="chkShuffleAnswers" text="Mélanger l'ordre des réponses"/>
+                <CheckBox fx:id="chkDoubleSided" text="Impression Recto-Verso"/>
+
+                <Separator/>
+
+                <Label text="Barème par défaut" style="-fx-font-weight: bold;"/>
+                <GridPane hgap="8" vgap="8">
+                    <Label text="Réponse juste :" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                    <TextField fx:id="txtScoreCorrect" text="1.0" prefWidth="60" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+                    <Label text="Sans réponse :" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                    <TextField fx:id="txtScoreEmpty" text="0.0" prefWidth="60" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+                    <Label text="Réponse fausse :" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                    <TextField fx:id="txtScoreIncorrect" text="0.0" prefWidth="60" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                </GridPane>
+            </VBox>
+        </ScrollPane>
+
+        <!-- Volet de Droite : Gestionnaire des questions -->
+        <VBox spacing="12" style="-fx-padding: 0 0 0 10;">
+            <HBox alignment="CENTER_LEFT" spacing="8">
+                <Label text="Questions de l'épreuve" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+            </HBox>
+
+            <ListView fx:id="questionsListView" VBox.vgrow="ALWAYS"/>
+        </VBox>
+    </SplitPane>
+</VBox>

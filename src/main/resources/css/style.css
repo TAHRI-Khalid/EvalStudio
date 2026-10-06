@@ -1,0 +1,404 @@
+/* ==========================================================================
+   EVAL DESKTOP - Thème Material 3 aligné sur eval_f_v2 (Web)
+   ========================================================================== */
+
+/* Variables et Couleurs Globales */
+.root {
+    -color-brand-primary: #004faa;
+    -color-brand-primary-container: #1967d2;
+    -color-brand-surface: #f7f9ff;
+    -color-brand-card: #ffffff;
+    -color-brand-border: #c2c6d5;
+    -color-brand-text: #181c20;
+    -color-brand-muted: #424753;
+    -color-brand-container: #ebeef4;
+    -color-brand-container-high: #e5e8ee;
+    -color-brand-success: #1b8744;
+    -color-brand-success-bg: #e6f7ec;
+    -color-brand-danger: #ba1a1a;
+    -color-brand-danger-bg: #ffdad6;
+    -fx-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Header Supérieur (Top Bar) */
+.top-header {
+    -fx-background-color: #ffffff;
+    -fx-border-color: transparent transparent #c2c6d5 transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 10 24 10 24;
+    -fx-alignment: CENTER_LEFT;
+}
+
+.brand-badge {
+    -fx-background-color: #004faa;
+    -fx-background-radius: 8px;
+    -fx-min-width: 34px;
+    -fx-min-height: 34px;
+    -fx-max-width: 34px;
+    -fx-max-height: 34px;
+    -fx-alignment: CENTER;
+}
+
+.brand-title {
+    -fx-font-size: 22px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #181c20;
+}
+
+.top-nav-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #424753;
+    -fx-font-size: 13px;
+    -fx-font-weight: 500;
+    -fx-padding: 8 14 8 14;
+    -fx-background-radius: 8px;
+    -fx-cursor: hand;
+}
+
+.top-nav-button:hover {
+    -fx-background-color: #f1f4fa;
+    -fx-text-fill: #181c20;
+}
+
+.top-nav-button:active, .top-nav-button.active {
+    -fx-background-color: #e5e8ee;
+    -fx-text-fill: #004faa;
+    -fx-font-weight: 600;
+}
+
+/* Zone Centrale de Contenu */
+.main-content-scroll {
+    -fx-background-color: #f7f9ff;
+    -fx-background: #f7f9ff;
+    -fx-border-color: transparent;
+}
+
+.main-content-scroll > .viewport {
+    -fx-background-color: #f7f9ff;
+}
+
+.content-container {
+    -fx-background-color: #f7f9ff;
+    -fx-padding: 0;
+}
+
+/* En-têtes de Pages */
+.page-title {
+    -fx-font-size: 22px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #181c20;
+}
+
+.page-subtitle {
+    -fx-font-size: 13px;
+    -fx-text-fill: #424753;
+}
+
+.back-link {
+    -fx-background-color: transparent;
+    -fx-text-fill: #424753;
+    -fx-font-size: 13px;
+    -fx-padding: 4 0 4 0;
+    -fx-cursor: hand;
+}
+
+.back-link:hover {
+    -fx-text-fill: #004faa;
+}
+
+/* Cartes de Groupe (Group Card) & Compatibilité Cours */
+.group-card,
+.course-card {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #c2c6d5;
+    -fx-border-width: 1px;
+    -fx-border-radius: 12px;
+    -fx-background-radius: 12px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.06), 12, 0, 0, 2);
+    -fx-cursor: hand;
+    -fx-min-width: 290px;
+    -fx-pref-width: 290px;
+    -fx-max-width: 320px;
+    -fx-min-height: 270px;
+    -fx-pref-height: 270px;
+}
+
+.group-card:hover,
+.course-card:hover {
+    -fx-border-color: #004faa;
+    -fx-effect: dropshadow(gaussian, rgba(0, 79, 170, 0.16), 16, 0, 0, 4);
+}
+
+.group-banner,
+.course-banner {
+    -fx-padding: 14 14 10 14;
+    -fx-background-radius: 12px 12px 0 0;
+    -fx-min-height: 85px;
+    -fx-pref-height: 85px;
+}
+
+.group-banner-title,
+.course-banner-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #ffffff;
+}
+
+.group-banner-year,
+.course-banner-year {
+    -fx-background-color: rgba(0, 0, 0, 0.25);
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 11px;
+    -fx-font-weight: 500;
+    -fx-padding: 2 8 2 8;
+    -fx-background-radius: 10px;
+}
+
+.group-avatar,
+.course-avatar {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #ffffff;
+    -fx-border-width: 2px;
+    -fx-border-radius: 22px;
+    -fx-background-radius: 22px;
+    -fx-min-width: 44px;
+    -fx-min-height: 44px;
+    -fx-max-width: 44px;
+    -fx-max-height: 44px;
+    -fx-alignment: CENTER;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.12), 6, 0, 0, 2);
+}
+
+.group-avatar-text,
+.course-avatar-text {
+    -fx-font-size: 18px;
+    -fx-font-weight: 800;
+}
+
+.group-body,
+.course-body {
+    -fx-padding: 10 14 10 14;
+    -fx-background-color: #ffffff;
+}
+
+.tag-badge {
+    -fx-background-color: #ebeef4;
+    -fx-text-fill: #181c20;
+    -fx-font-size: 11px;
+    -fx-font-weight: 600;
+    -fx-padding: 2 7 2 7;
+    -fx-background-radius: 4px;
+}
+
+.group-etablissement,
+.course-institute {
+    -fx-font-size: 12px;
+    -fx-text-fill: #424753;
+}
+
+.group-footer,
+.course-footer {
+    -fx-padding: 8 12 8 12;
+    -fx-background-color: #ffffff;
+    -fx-border-color: #f1f4fa transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+    -fx-background-radius: 0 0 12px 12px;
+}
+
+.card-action-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #424753;
+    -fx-padding: 6 8 6 8;
+    -fx-background-radius: 6px;
+    -fx-cursor: hand;
+    -fx-font-size: 12px;
+}
+
+.card-action-btn:hover {
+    -fx-background-color: #ebeef4;
+    -fx-text-fill: #004faa;
+}
+
+/* Bannière de cours active pour Évaluations & Corrections */
+.active-course-banner {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #c2c6d5;
+    -fx-border-width: 1px;
+    -fx-border-radius: 12px;
+    -fx-background-radius: 12px;
+    -fx-padding: 16 20 16 20;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.04), 8, 0, 0, 1);
+}
+
+/* Sélecteur de couleur de thème (style web eval_f_v2) */
+.color-swatch {
+    -fx-min-width: 32px;
+    -fx-min-height: 32px;
+    -fx-max-width: 32px;
+    -fx-max-height: 32px;
+    -fx-background-radius: 16px;
+    -fx-border-radius: 16px;
+    -fx-border-color: transparent;
+    -fx-border-width: 2px;
+    -fx-cursor: hand;
+    -fx-alignment: CENTER;
+}
+
+.color-swatch:hover {
+    -fx-scale-x: 1.12;
+    -fx-scale-y: 1.12;
+}
+
+.color-swatch-selected {
+    -fx-border-color: #181c20;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 8, 0, 0, 2);
+}
+
+.dialog-logo-preview {
+    -fx-min-width: 64px;
+    -fx-min-height: 64px;
+    -fx-max-width: 64px;
+    -fx-max-height: 64px;
+    -fx-background-color: #f1f4fa;
+    -fx-border-color: #c2c6d5;
+    -fx-border-width: 1px;
+    -fx-border-radius: 14px;
+    -fx-background-radius: 14px;
+    -fx-alignment: CENTER;
+}
+
+
+/* Cartes KPI Statistiques */
+.kpi-card {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #c2c6d5;
+    -fx-border-radius: 10px;
+    -fx-background-radius: 10px;
+    -fx-padding: 14 18 14 18;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.03), 8, 0, 0, 1);
+}
+
+.kpi-label {
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #424753;
+    -fx-letter-spacing: 0.5px;
+}
+
+.kpi-value {
+    -fx-font-size: 26px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #004faa;
+}
+
+/* Badges de Statut pour Évaluations */
+.status-badge-conception {
+    -fx-background-color: #dfe3e8;
+    -fx-text-fill: #424753;
+    -fx-font-size: 11px;
+    -fx-font-weight: 600;
+    -fx-padding: 3 10 3 10;
+    -fx-background-radius: 12px;
+}
+
+.status-badge-printed {
+    -fx-background-color: #d8e2ff;
+    -fx-text-fill: #004faa;
+    -fx-font-size: 11px;
+    -fx-font-weight: 600;
+    -fx-padding: 3 10 3 10;
+    -fx-background-radius: 12px;
+}
+
+.status-badge-corrected {
+    -fx-background-color: #e6f7ec;
+    -fx-text-fill: #1b8744;
+    -fx-font-size: 11px;
+    -fx-font-weight: 600;
+    -fx-padding: 3 10 3 10;
+    -fx-background-radius: 12px;
+}
+
+/* Zone Glisser-Déposer OMR */
+.drop-zone {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #c2c6d5;
+    -fx-border-style: dashed;
+    -fx-border-width: 2px;
+    -fx-border-radius: 12px;
+    -fx-background-radius: 12px;
+    -fx-padding: 24px;
+    -fx-alignment: center;
+}
+
+.drop-zone:hover {
+    -fx-border-color: #004faa;
+    -fx-background-color: #f1f4fa;
+}
+
+/* Boutons Primaires & Accents */
+.btn-primary {
+    -fx-background-color: #004faa;
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: 600;
+    -fx-background-radius: 8px;
+    -fx-padding: 8 16 8 16;
+    -fx-cursor: hand;
+}
+
+.btn-primary:hover {
+    -fx-background-color: #1967d2;
+}
+
+/* Tableaux Modernes */
+.table-view {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #c2c6d5;
+    -fx-border-radius: 10px;
+    -fx-background-radius: 10px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.02), 6, 0, 0, 1);
+}
+
+.table-view .column-header {
+    -fx-background-color: #f1f4fa;
+    -fx-border-color: transparent transparent #c2c6d5 transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-font-weight: 600;
+    -fx-font-size: 12px;
+    -fx-text-fill: #424753;
+}
+
+.table-row-cell:hover {
+    -fx-background-color: #f7f9ff;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #e6ecff;
+    -fx-text-fill: #004faa;
+}
+
+/* Onglets du groupe / cours (Group Workspace TabPane) */
+.group-tab-pane,
+.course-tab-pane {
+    -fx-background-color: transparent;
+}
+
+.group-tab-pane > .tab-header-area,
+.course-tab-pane > .tab-header-area {
+    -fx-padding: 0 0 6 0;
+}
+
+.group-tab-pane > .tab-header-area > .headers-region > .tab,
+.course-tab-pane > .tab-header-area > .headers-region > .tab {
+    -fx-background-radius: 8px 8px 0 0;
+    -fx-padding: 8 18 8 18;
+    -fx-cursor: hand;
+    -fx-font-weight: 600;
+    -fx-font-size: 13px;
+}
+
+.group-tab-pane > .tab-content-area,
+.course-tab-pane > .tab-content-area {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}

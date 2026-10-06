@@ -27,6 +27,8 @@ import tk.tahri.eval.desktop.ui.NotificationService;
 import java.io.File;
 import java.net.URL;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.ResourceBundle;
 
@@ -36,6 +38,8 @@ public class EvaluationsViewController implements Initializable {
     private static final Logger log = LoggerFactory.getLogger(EvaluationsViewController.class);
 
     @FXML private Button btnNewEval;
+    @FXML private TextField searchField;
+    @FXML private Label lblEvalCount;
 
     @FXML private TableView<Evaluation> evalTable;
     @FXML private TableColumn<Evaluation, String> colDesignation;
@@ -52,6 +56,8 @@ public class EvaluationsViewController implements Initializable {
     private final MainLayoutController mainLayoutController;
 
     private final ObservableList<Evaluation> evalList = FXCollections.observableArrayList();
+    private final List<Evaluation> fullEvalList = new ArrayList<>();
+    private javafx.collections.transformation.FilteredList<Evaluation> filteredEvalList;
     private Group currentGroup;
 
     public EvaluationsViewController(GroupService groupService,
@@ -240,7 +246,10 @@ public class EvaluationsViewController implements Initializable {
             return row;
         });
 
-        evalTable.setItems(evalList);
+        filteredEvalList = new javafx.collections.transformation.FilteredList<>(evalList, p -> true);
+        javafx.collections.transformation.SortedList<Evaluation> sortedList = new javafx.collections.transformation.SortedList<>(filteredEvalList);
+        sortedList.comparatorProperty().bind(evalTable.comparatorProperty());
+        evalTable.setItems(sortedList);
     }
 
     private void setupIcons() {
@@ -248,6 +257,10 @@ public class EvaluationsViewController implements Initializable {
     }
 
     private void setupListeners() {
+        if (searchField != null) {
+            searchField.textProperty().addListener((obs, oldVal, newVal) -> filterEvaluations(newVal));
+        }
+
         evalTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 if (mainLayoutController != null) {
@@ -259,6 +272,27 @@ public class EvaluationsViewController implements Initializable {
                 }
             }
         });
+    }
+
+    private void filterEvaluations(String query) {
+        if (filteredEvalList == null) return;
+        if (query == null || query.isBlank()) {
+            filteredEvalList.setPredicate(p -> true);
+        } else {
+            String lower = query.trim().toLowerCase();
+            filteredEvalList.setPredicate(e -> {
+                String desig = e.getDesignation() != null ? e.getDesignation().toLowerCase() : "";
+                String type = e.getType() != null ? e.getType().toLowerCase() : "";
+                return desig.contains(lower) || type.contains(lower);
+            });
+        }
+        updateCountLabel(filteredEvalList.size());
+    }
+
+    private void updateCountLabel(int count) {
+        if (lblEvalCount != null) {
+            lblEvalCount.setText(count + " évaluation" + (count > 1 ? "s" : ""));
+        }
     }
 
     public Evaluation getSelectedEvaluation() {
@@ -274,6 +308,8 @@ public class EvaluationsViewController implements Initializable {
             loadEvaluations(group.getId());
         } else {
             evalList.clear();
+            fullEvalList.clear();
+            updateCountLabel(0);
         }
     }
 
@@ -304,12 +340,15 @@ public class EvaluationsViewController implements Initializable {
     public void loadEvaluations(String groupId) {
         if (groupId == null) {
             evalList.clear();
+            fullEvalList.clear();
+            updateCountLabel(0);
             return;
         }
         var evals = evaluationService.getEvaluationsByGroup(groupId).stream()
                 .filter(e -> e.getState() == EvaluationState.CONCEPTION)
                 .toList();
         evalList.setAll(evals);
+        filterEvaluations(searchField != null ? searchField.getText() : null);
     }
 
     @FXML

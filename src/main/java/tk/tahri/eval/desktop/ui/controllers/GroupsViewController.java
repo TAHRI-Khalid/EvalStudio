@@ -48,6 +48,7 @@ public class GroupsViewController implements Initializable {
     public static final String DEFAULT_THEME = "#216cd3";
 
     @FXML private TextField searchField;
+    @FXML private Label lblGroupCount;
     @FXML private Button btnNewGroup;
     @FXML private FlowPane groupsFlowPane;
     @FXML private VBox emptyStateBox;
@@ -90,6 +91,10 @@ public class GroupsViewController implements Initializable {
 
     public void loadGroups() {
         allGroups.setAll(groupService.getAllGroups());
+        if (lblGroupCount != null) {
+            int count = allGroups.size();
+            lblGroupCount.setText(count + " groupe" + (count > 1 ? "s" : ""));
+        }
         renderCards();
     }
 

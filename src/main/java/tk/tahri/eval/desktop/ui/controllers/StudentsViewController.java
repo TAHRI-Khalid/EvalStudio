@@ -58,6 +58,7 @@ public class StudentsViewController implements Initializable {
     @FXML private Label lblInlineNotification;
 
     // Informations et Export
+    @FXML private Label lblHeaderStudentCount;
     @FXML private Label lblStudentCount;
     @FXML private Button btnExportExcel;
 
@@ -272,8 +273,12 @@ public class StudentsViewController implements Initializable {
     }
 
     private void updateCountLabel(int count) {
+        String text = count + " étudiant" + (count > 1 ? "s" : "");
         if (lblStudentCount != null) {
-            lblStudentCount.setText(count + " étudiant" + (count > 1 ? "s" : "") + " inscrit" + (count > 1 ? "s" : ""));
+            lblStudentCount.setText(text + " inscrit" + (count > 1 ? "s" : ""));
+        }
+        if (lblHeaderStudentCount != null) {
+            lblHeaderStudentCount.setText(text);
         }
     }
 

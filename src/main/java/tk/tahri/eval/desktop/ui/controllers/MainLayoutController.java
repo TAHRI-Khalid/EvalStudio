@@ -546,8 +546,22 @@ public class MainLayoutController implements Initializable, NotificationService.
     private void setupKeyboardShortcuts(Scene scene) {
         scene.getAccelerators().put(new KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_DOWN), this::focusSearchField);
         scene.getAccelerators().put(new KeyCodeCombination(KeyCode.S, KeyCombination.CONTROL_DOWN), this::triggerSaveIfBuilder);
+        scene.getAccelerators().put(new KeyCodeCombination(KeyCode.N, KeyCombination.CONTROL_DOWN), this::triggerNewAction);
         scene.getAccelerators().put(new KeyCodeCombination(KeyCode.ESCAPE), this::navigateBack);
         scene.getAccelerators().put(new KeyCodeCombination(KeyCode.LEFT, KeyCombination.ALT_DOWN), this::navigateBack);
+    }
+
+    private void triggerNewAction() {
+        if (contentArea == null) return;
+        // Recherche dans l'ordre de priorité : "Nouveau groupe", "Nouvel étudiant", "Nouvelle évaluation", "Ajouter une question"
+        String[] actions = {"Nouveau groupe", "Nouvel étudiant", "Nouvelle évaluation", "Ajouter une question"};
+        for (String actionText : actions) {
+            Button btn = findButtonByText(contentArea, actionText);
+            if (btn != null && !btn.isDisable() && btn.isVisible()) {
+                btn.fire();
+                return;
+            }
+        }
     }
 
     private void focusSearchField() {
@@ -561,7 +575,7 @@ public class MainLayoutController implements Initializable, NotificationService.
 
     private TextField findSearchField(Node root) {
         if (root instanceof TextField tf) {
-            if (tf.getStyleClass().contains("search-field") || (tf.getPromptText() != null && tf.getPromptText().toLowerCase().contains("recherch"))) {
+            if (tf.getStyleClass().contains("search-field") || (tf.getPromptText() != null && tf.getPromptText().toLowerCase().contains("recherch")) || (tf.getPromptText() != null && tf.getPromptText().toLowerCase().contains("filtrer"))) {
                 return tf;
             }
         }

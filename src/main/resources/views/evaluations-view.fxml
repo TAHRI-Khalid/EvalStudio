@@ -12,9 +12,14 @@
     <!-- En-tête de vue et bouton Nouvelle Évaluation -->
     <HBox alignment="CENTER_LEFT" spacing="16">
         <VBox HBox.hgrow="ALWAYS" spacing="2">
-            <Label text="Évaluations &amp; Examens" styleClass="page-title"/>
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <Label text="Évaluations &amp; Examens" styleClass="page-title"/>
+                <Label fx:id="lblEvalCount" text="0 évaluation(s)" styleClass="tag-badge"
+                       style="-fx-font-size: 11px; -fx-font-weight: 600;"/>
+            </HBox>
             <Label text="Créez vos sujets, configurez vos barèmes et générez les copies d'examen • Double-cliquez pour ouvrir" styleClass="page-subtitle"/>
         </VBox>
+        <TextField fx:id="searchField" promptText="Filtrer les évaluations..." prefWidth="240" styleClass="search-field"/>
         <Button fx:id="btnNewEval" text="Nouvelle évaluation" styleClass="btn-primary" onAction="#onNewEvaluation"/>
     </HBox>
 
@@ -32,10 +37,13 @@
             <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
         </columnResizePolicy>
         <placeholder>
-            <VBox alignment="CENTER" spacing="10">
-                <FontIcon iconLiteral="fth-file-plus" iconColor="#74777f" iconSize="36"/>
-                <Label text="Aucune évaluation en cours de conception" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #424753;"/>
-                <Label text="Cliquez sur « Nouvelle évaluation » pour créer un nouveau sujet d'examen." style="-fx-text-fill: #74777f; -fx-font-size: 12px;"/>
+            <VBox alignment="CENTER" spacing="12" styleClass="empty-state-box">
+                <HBox alignment="CENTER" styleClass="empty-state-icon-container">
+                    <FontIcon iconLiteral="fth-file-plus" iconColor="#004faa" iconSize="32"/>
+                </HBox>
+                <Label text="Aucune évaluation trouvée" styleClass="empty-state-title"/>
+                <Label text="Créez votre première évaluation pour ce groupe en quelques clics." styleClass="empty-state-subtitle"/>
+                <Button text="Nouvelle évaluation" styleClass="btn-primary" onAction="#onNewEvaluation"/>
             </VBox>
         </placeholder>
     </TableView>

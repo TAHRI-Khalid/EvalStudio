@@ -13,10 +13,14 @@
         <!-- En-tête de vue -->
         <HBox alignment="CENTER_LEFT" spacing="16">
             <VBox HBox.hgrow="ALWAYS" spacing="4">
-                <Label text="Mes groupes" styleClass="page-title"/>
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <Label text="Mes groupes" styleClass="page-title"/>
+                    <Label fx:id="lblGroupCount" text="0 groupe(s)" styleClass="tag-badge"
+                           style="-fx-font-size: 11px; -fx-font-weight: 600;"/>
+                </HBox>
                 <Label text="Gérez vos groupes, vos évaluations et vos étudiants • Double-cliquez pour ouvrir les évaluations" styleClass="page-subtitle"/>
             </VBox>
-            <TextField fx:id="searchField" promptText="Rechercher par nom, filière, établissement..." prefWidth="280" style="-fx-background-radius: 8px; -fx-padding: 8 12;"/>
+            <TextField fx:id="searchField" promptText="Rechercher par nom, filière, établissement..." prefWidth="280" styleClass="search-field"/>
             <Button fx:id="btnNewGroup" text="Nouveau groupe" styleClass="btn-primary" onAction="#onNewGroup"/>
         </HBox>
 

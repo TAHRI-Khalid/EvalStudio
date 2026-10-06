@@ -12,10 +12,14 @@
     <!-- En-tête de vue -->
     <HBox alignment="CENTER_LEFT" spacing="16">
         <VBox HBox.hgrow="ALWAYS" spacing="2">
-            <Label text="Étudiants &amp; Inscriptions" styleClass="page-title"/>
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <Label text="Étudiants &amp; Inscriptions" styleClass="page-title"/>
+                <Label fx:id="lblHeaderStudentCount" text="0 étudiant(s)" styleClass="tag-badge"
+                       style="-fx-font-size: 11px; -fx-font-weight: 600;"/>
+            </HBox>
             <Label text="Gérez les listes d'étudiants inscrits, importez vos listes Excel et gérez les matricules • Double-cliquez pour modifier" styleClass="page-subtitle"/>
         </VBox>
-        <TextField fx:id="searchField" promptText="Filtrer les étudiants..." prefWidth="240" style="-fx-background-radius: 8px; -fx-padding: 8 12;"/>
+        <TextField fx:id="searchField" promptText="Filtrer les étudiants..." prefWidth="240" styleClass="search-field"/>
         <Button fx:id="btnImportExcel" text="Importer Excel (.xlsx)" styleClass="card-action-btn" onAction="#onImportExcel"/>
         <Button fx:id="btnNewStudent" text="Nouvel étudiant" styleClass="btn-primary" onAction="#onNewStudent"/>
     </HBox>
@@ -93,5 +97,18 @@
         <columnResizePolicy>
             <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
         </columnResizePolicy>
+        <placeholder>
+            <VBox alignment="CENTER" spacing="12" styleClass="empty-state-box">
+                <HBox alignment="CENTER" styleClass="empty-state-icon-container">
+                    <FontIcon iconLiteral="fth-user-plus" iconColor="#004faa" iconSize="32"/>
+                </HBox>
+                <Label text="Aucun étudiant inscrit" styleClass="empty-state-title"/>
+                <Label text="Ajoutez votre premier étudiant ou importez une liste Excel (.xlsx)" styleClass="empty-state-subtitle"/>
+                <HBox alignment="CENTER" spacing="10">
+                    <Button text="Importer Excel" styleClass="card-action-btn" onAction="#onImportExcel"/>
+                    <Button text="Nouvel étudiant" styleClass="btn-primary" onAction="#onNewStudent"/>
+                </HBox>
+            </VBox>
+        </placeholder>
     </TableView>
 </VBox>

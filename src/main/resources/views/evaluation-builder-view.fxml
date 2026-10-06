@@ -97,10 +97,13 @@
 
             <ListView fx:id="questionsListView" VBox.vgrow="ALWAYS">
                 <placeholder>
-                    <VBox alignment="CENTER" spacing="10" styleClass="empty-state-box">
-                        <FontIcon iconLiteral="fth-help-circle" iconColor="#74777f" iconSize="36"/>
+                    <VBox alignment="CENTER" spacing="12" styleClass="empty-state-box">
+                        <HBox alignment="CENTER" styleClass="empty-state-icon-container">
+                            <FontIcon iconLiteral="fth-help-circle" iconColor="#004faa" iconSize="32"/>
+                        </HBox>
                         <Label text="Aucune question pour le moment" styleClass="empty-state-title" style="-fx-font-size: 14px;"/>
-                        <Label text="Cliquez sur « Ajouter une question » ci-dessus pour composer l'épreuve." styleClass="empty-state-subtitle"/>
+                        <Label text="Composez votre épreuve en ajoutant des questions à choix unique ou multiple." styleClass="empty-state-subtitle"/>
+                        <Button text="Ajouter une question" styleClass="btn-primary" onAction="#onAddQuestion"/>
                     </VBox>
                 </placeholder>
             </ListView>

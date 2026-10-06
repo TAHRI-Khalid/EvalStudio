@@ -12,69 +12,200 @@
 
     <!-- Header Supérieur avec Bannière du cours actif intégrée -->
     <top>
-        <HBox alignment="CENTER_LEFT" spacing="12" styleClass="top-header">
-            <!-- Bouton Retour universel -->
-            <Button fx:id="btnNavBack" text="Retour" styleClass="card-action-btn" onAction="#navigateBack"
-                    visible="false" managed="false" style="-fx-font-weight: 600; -fx-padding: 6 12;">
-                <graphic>
-                    <FontIcon iconLiteral="fth-arrow-left" iconSize="13"/>
-                </graphic>
-            </Button>
+        <VBox>
+            <!-- Header Supérieur avec Bannière du cours actif intégrée -->
+            <HBox alignment="CENTER_LEFT" spacing="12" styleClass="top-header">
+                <!-- Bouton Retour universel -->
+                <Button fx:id="btnNavBack" text="Retour" styleClass="card-action-btn" onAction="#navigateBack"
+                        visible="false" managed="false" style="-fx-font-weight: 600; -fx-padding: 6 12;">
+                    <graphic>
+                        <FontIcon iconLiteral="fth-arrow-left" iconSize="13"/>
+                    </graphic>
+                </Button>
 
-            <!-- Bouton Catalogue Mes groupes -->
-            <Button fx:id="btnAllCourses" text="Mes groupes" styleClass="card-action-btn" onAction="#showGroupsView"
-                    style="-fx-font-weight: 600; -fx-padding: 6 12;">
-                <graphic>
-                    <FontIcon iconLiteral="fth-grid" iconSize="13"/>
-                </graphic>
-            </Button>
+                <!-- Bouton Catalogue Mes groupes -->
+                <Button fx:id="btnAllCourses" text="Mes groupes" styleClass="card-action-btn" onAction="#showGroupsView"
+                        style="-fx-font-weight: 600; -fx-padding: 6 12;">
+                    <graphic>
+                        <FontIcon iconLiteral="fth-grid" iconSize="13"/>
+                    </graphic>
+                </Button>
 
-            <Separator fx:id="headerSeparator" orientation="VERTICAL" style="-fx-padding: 0 4;"/>
+                <Separator fx:id="headerSeparator" orientation="VERTICAL" style="-fx-padding: 0 4;"/>
 
-            <!-- Bannière contextuelle du groupe actif (Élément de navigation interactive) -->
-            <HBox fx:id="courseBannerBox" alignment="CENTER_LEFT" spacing="10" onMouseClicked="#onCourseBannerClicked"
-                  style="-fx-cursor: hand; -fx-padding: 4 8; -fx-background-radius: 8px;">
-                <HBox fx:id="bannerAvatarBox" alignment="CENTER"
-                      style="-fx-background-color: #004faa; -fx-background-radius: 8px; -fx-min-width: 34px; -fx-min-height: 34px; -fx-max-width: 34px; -fx-max-height: 34px;">
-                    <FontIcon iconLiteral="fth-users" iconColor="white" iconSize="16"/>
+                <!-- Bannière contextuelle du groupe actif (Élément de navigation interactive) -->
+                <HBox fx:id="courseBannerBox" alignment="CENTER_LEFT" spacing="10" onMouseClicked="#onCourseBannerClicked"
+                      style="-fx-cursor: hand; -fx-padding: 4 8; -fx-background-radius: 8px;">
+                    <HBox fx:id="bannerAvatarBox" alignment="CENTER"
+                          style="-fx-background-color: #004faa; -fx-background-radius: 8px; -fx-min-width: 34px; -fx-min-height: 34px; -fx-max-width: 34px; -fx-max-height: 34px;">
+                        <FontIcon iconLiteral="fth-users" iconColor="white" iconSize="16"/>
+                    </HBox>
+                    <VBox alignment="CENTER_LEFT" spacing="1">
+                        <Label fx:id="lblCourseTitle" text="Sélectionnez un groupe"
+                               style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: -color-fg-default;"/>
+                        <Label fx:id="lblCourseSubtitle" text="Filière • Année"
+                               style="-fx-font-size: 11px; -fx-text-fill: -color-fg-muted;"/>
+                    </VBox>
                 </HBox>
-                <VBox alignment="CENTER_LEFT" spacing="1">
-                    <Label fx:id="lblCourseTitle" text="Sélectionnez un groupe"
-                           style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: -color-fg-default;"/>
-                    <Label fx:id="lblCourseSubtitle" text="Filière • Année"
-                           style="-fx-font-size: 11px; -fx-text-fill: -color-fg-muted;"/>
-                </VBox>
+
+                <!-- Séparateur vertical entre la bannière du cours et la bannière de l'évaluation -->
+                <Separator fx:id="evalSeparator" orientation="VERTICAL" style="-fx-padding: 0 4;" visible="false" managed="false"/>
+
+                <!-- Bannière contextuelle de l'évaluation active -->
+                <HBox fx:id="evaluationBannerBox" alignment="CENTER_LEFT" spacing="10" visible="false" managed="false"
+                      style="-fx-padding: 4 8; -fx-background-radius: 8px;">
+                    <HBox fx:id="evalAvatarBox" alignment="CENTER"
+                          style="-fx-background-color: #555f71; -fx-background-radius: 8px; -fx-min-width: 34px; -fx-min-height: 34px; -fx-max-width: 34px; -fx-max-height: 34px;">
+                        <FontIcon iconLiteral="fth-file-text" iconColor="white" iconSize="16"/>
+                    </HBox>
+                    <VBox alignment="CENTER_LEFT" spacing="1">
+                        <Label fx:id="lblEvaluationTitle" text="Évaluation"
+                               style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: -color-accent-emphasis;"/>
+                        <Label fx:id="lblEvaluationSubtitle" text="Détails de l'évaluation"
+                               style="-fx-font-size: 11px; -fx-text-fill: -color-fg-muted;"/>
+                    </VBox>
+                </HBox>
+
+                <!-- Espace flexible garantissant que Paramètres reste toujours à l'extrême droite -->
+                <Region HBox.hgrow="ALWAYS"/>
+
+                <!-- Bouton Paramètres toujours aligné à droite -->
+                <Button fx:id="btnSettings" styleClass="card-action-btn" onAction="#showSettingsView">
+                    <tooltip><Tooltip text="Paramètres de l'application"/></tooltip>
+                    <graphic>
+                        <FontIcon iconLiteral="fth-settings" iconSize="15"/>
+                    </graphic>
+                </Button>
             </HBox>
 
-            <!-- Séparateur vertical entre la bannière du cours et la bannière de l'évaluation -->
-            <Separator fx:id="evalSeparator" orientation="VERTICAL" style="-fx-padding: 0 4;" visible="false" managed="false"/>
+            <!-- RUBAN MICROSOFT OFFICE COMPACT & PUISSANT -->
+            <VBox fx:id="ribbonContainer" styleClass="ribbon-container">
+                <!-- 1. Onglets du Ruban -->
+                <HBox alignment="CENTER_LEFT" spacing="4" styleClass="ribbon-tabs-bar">
+                    <Button fx:id="tabRibbonHome" text="Accueil" styleClass="ribbon-tab-btn, active" onAction="#onSelectRibbonHome"/>
+                    <Button fx:id="tabRibbonStudents" text="Étudiants" styleClass="ribbon-tab-btn" onAction="#onSelectRibbonStudents"/>
+                    <Button fx:id="tabRibbonEvals" text="Évaluations" styleClass="ribbon-tab-btn" onAction="#onSelectRibbonEvals"/>
+                    <Button fx:id="tabRibbonCorrection" text="Correction &amp; Scanner" styleClass="ribbon-tab-btn" onAction="#onSelectRibbonCorrection"/>
+                    <Button fx:id="tabRibbonSettings" text="Affichage &amp; Système" styleClass="ribbon-tab-btn" onAction="#onSelectRibbonSettings"/>
 
-            <!-- Bannière contextuelle de l'évaluation active -->
-            <HBox fx:id="evaluationBannerBox" alignment="CENTER_LEFT" spacing="10" visible="false" managed="false"
-                  style="-fx-padding: 4 8; -fx-background-radius: 8px;">
-                <HBox fx:id="evalAvatarBox" alignment="CENTER"
-                      style="-fx-background-color: #555f71; -fx-background-radius: 8px; -fx-min-width: 34px; -fx-min-height: 34px; -fx-max-width: 34px; -fx-max-height: 34px;">
-                    <FontIcon iconLiteral="fth-file-text" iconColor="white" iconSize="16"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+
+                    <!-- Bouton pour Réduire / Déplier le Ruban -->
+                    <Button fx:id="btnToggleRibbon" styleClass="card-action-btn" onAction="#toggleRibbonCollapse"
+                            style="-fx-padding: 3 8; -fx-font-size: 11px;">
+                        <tooltip><Tooltip text="Réduire ou déplier le ruban d'actions"/></tooltip>
+                        <graphic>
+                            <FontIcon fx:id="iconToggleRibbon" iconLiteral="fth-chevron-up" iconSize="13"/>
+                        </graphic>
+                    </Button>
                 </HBox>
-                <VBox alignment="CENTER_LEFT" spacing="1">
-                    <Label fx:id="lblEvaluationTitle" text="Évaluation"
-                           style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: -color-accent-emphasis;"/>
-                    <Label fx:id="lblEvaluationSubtitle" text="Détails de l'évaluation"
-                           style="-fx-font-size: 11px; -fx-text-fill: -color-fg-muted;"/>
-                </VBox>
-            </HBox>
 
-            <!-- Espace flexible garantissant que Paramètres reste toujours à l'extrême droite -->
-            <Region HBox.hgrow="ALWAYS"/>
+                <!-- 2. Barre d'outils du Ruban -->
+                <HBox fx:id="ribbonToolbar" alignment="CENTER_LEFT" spacing="8" styleClass="ribbon-toolbar">
+                    <!-- CONTENU ONGLET 1 : ACCUEIL -->
+                    <HBox fx:id="ribbonPanelHome" alignment="CENTER_LEFT" spacing="8">
+                        <!-- Groupe Navigation -->
+                        <VBox alignment="CENTER" styleClass="ribbon-group-box">
+                            <HBox alignment="CENTER" spacing="4" VBox.vgrow="ALWAYS">
+                                <Button text="Mes Groupes" styleClass="ribbon-action-btn" onAction="#showGroupsView">
+                                    <graphic><FontIcon iconLiteral="fth-grid" iconSize="18" iconColor="#004faa"/></graphic>
+                                </Button>
+                            </HBox>
+                            <Label text="Navigation" styleClass="ribbon-group-title"/>
+                        </VBox>
 
-            <!-- Bouton Paramètres toujours aligné à droite -->
-            <Button fx:id="btnSettings" styleClass="card-action-btn" onAction="#showSettingsView">
-                <tooltip><Tooltip text="Paramètres de l'application"/></tooltip>
-                <graphic>
-                    <FontIcon iconLiteral="fth-settings" iconSize="15"/>
-                </graphic>
-            </Button>
-        </HBox>
+                        <!-- Groupe Création Rapide -->
+                        <VBox alignment="CENTER" styleClass="ribbon-group-box">
+                            <HBox alignment="CENTER" spacing="4" VBox.vgrow="ALWAYS">
+                                <Button text="Nouveau Groupe" styleClass="ribbon-action-btn" onAction="#triggerRibbonNewGroup">
+                                    <graphic><FontIcon iconLiteral="fth-plus-circle" iconSize="18" iconColor="#1b8744"/></graphic>
+                                </Button>
+                                <Button text="Ajouter Étudiant" styleClass="ribbon-action-btn" onAction="#triggerRibbonNewStudent">
+                                    <graphic><FontIcon iconLiteral="fth-user-plus" iconSize="18" iconColor="#004faa"/></graphic>
+                                </Button>
+                                <Button text="Créer Épreuve" styleClass="ribbon-action-btn" onAction="#triggerRibbonNewEval">
+                                    <graphic><FontIcon iconLiteral="fth-file-plus" iconSize="18" iconColor="#b45309"/></graphic>
+                                </Button>
+                            </HBox>
+                            <Label text="Création Rapide" styleClass="ribbon-group-title"/>
+                        </VBox>
+
+                        <!-- Groupe Outils & Raccourcis -->
+                        <VBox alignment="CENTER" styleClass="ribbon-group-box">
+                            <HBox alignment="CENTER" spacing="6" VBox.vgrow="ALWAYS">
+                                <Button text="Rechercher (Ctrl+F)" styleClass="ribbon-action-btn" onAction="#focusSearchField">
+                                    <graphic><FontIcon iconLiteral="fth-search" iconSize="18" iconColor="#555f71"/></graphic>
+                                </Button>
+                            </HBox>
+                            <Label text="Recherche" styleClass="ribbon-group-title"/>
+                        </VBox>
+                    </HBox>
+
+                    <!-- CONTENU ONGLET 2 : ÉTUDIANTS -->
+                    <HBox fx:id="ribbonPanelStudents" alignment="CENTER_LEFT" spacing="8" visible="false" managed="false">
+                        <VBox alignment="CENTER" styleClass="ribbon-group-box">
+                            <HBox alignment="CENTER" spacing="4" VBox.vgrow="ALWAYS">
+                                <Button text="Nouvel Étudiant" styleClass="ribbon-action-btn" onAction="#triggerRibbonNewStudent">
+                                    <graphic><FontIcon iconLiteral="fth-user-plus" iconSize="18" iconColor="#004faa"/></graphic>
+                                </Button>
+                                <Button text="Importer Excel" styleClass="ribbon-action-btn" onAction="#triggerRibbonImportExcel">
+                                    <graphic><FontIcon iconLiteral="fth-upload" iconSize="18" iconColor="#1b8744"/></graphic>
+                                </Button>
+                                <Button text="Exporter (.xlsx)" styleClass="ribbon-action-btn" onAction="#triggerRibbonExportStudentsExcel">
+                                    <graphic><FontIcon iconLiteral="fth-download" iconSize="18" iconColor="#555f71"/></graphic>
+                                </Button>
+                            </HBox>
+                            <Label text="Inscriptions &amp; Données" styleClass="ribbon-group-title"/>
+                        </VBox>
+                    </HBox>
+
+                    <!-- CONTENU ONGLET 3 : ÉVALUATIONS -->
+                    <HBox fx:id="ribbonPanelEvals" alignment="CENTER_LEFT" spacing="8" visible="false" managed="false">
+                        <VBox alignment="CENTER" styleClass="ribbon-group-box">
+                            <HBox alignment="CENTER" spacing="4" VBox.vgrow="ALWAYS">
+                                <Button text="Nouvelle Épreuve" styleClass="ribbon-action-btn" onAction="#triggerRibbonNewEval">
+                                    <graphic><FontIcon iconLiteral="fth-file-plus" iconSize="18" iconColor="#004faa"/></graphic>
+                                </Button>
+                            </HBox>
+                            <Label text="Création d'évaluation" styleClass="ribbon-group-title"/>
+                        </VBox>
+                    </HBox>
+
+                    <!-- CONTENU ONGLET 4 : CORRECTION -->
+                    <HBox fx:id="ribbonPanelCorrection" alignment="CENTER_LEFT" spacing="8" visible="false" managed="false">
+                        <VBox alignment="CENTER" styleClass="ribbon-group-box">
+                            <HBox alignment="CENTER" spacing="4" VBox.vgrow="ALWAYS">
+                                <Button text="Scanner &amp; Corriger" styleClass="ribbon-action-btn" onAction="#triggerRibbonScan">
+                                    <graphic><FontIcon iconLiteral="fth-check-circle" iconSize="18" iconColor="#1b8744"/></graphic>
+                                </Button>
+                                <Button text="Voir PDF Généré" styleClass="ribbon-action-btn" onAction="#triggerRibbonOpenGeneratedPdf">
+                                    <graphic><FontIcon iconLiteral="fth-file-text" iconSize="18" iconColor="#004faa"/></graphic>
+                                </Button>
+                                <Button text="Exporter Notes" styleClass="ribbon-action-btn" onAction="#triggerRibbonExportGradesExcel">
+                                    <graphic><FontIcon iconLiteral="fth-download" iconSize="18" iconColor="#555f71"/></graphic>
+                                </Button>
+                                <Button text="PV Notes" styleClass="ribbon-action-btn" onAction="#triggerRibbonExportPdfReport">
+                                    <graphic><FontIcon iconLiteral="fth-printer" iconSize="18" iconColor="#b45309"/></graphic>
+                                </Button>
+                            </HBox>
+                            <Label text="Traitement OMR &amp; Résultats" styleClass="ribbon-group-title"/>
+                        </VBox>
+                    </HBox>
+
+                    <!-- CONTENU ONGLET 5 : PARAMÈTRES & SYSTÈME -->
+                    <HBox fx:id="ribbonPanelSettings" alignment="CENTER_LEFT" spacing="8" visible="false" managed="false">
+                        <VBox alignment="CENTER" styleClass="ribbon-group-box">
+                            <HBox alignment="CENTER" spacing="4" VBox.vgrow="ALWAYS">
+                                <Button text="Paramètres" styleClass="ribbon-action-btn" onAction="#showSettingsView">
+                                    <graphic><FontIcon iconLiteral="fth-settings" iconSize="18" iconColor="#004faa"/></graphic>
+                                </Button>
+                            </HBox>
+                            <Label text="Configuration" styleClass="ribbon-group-title"/>
+                        </VBox>
+                    </HBox>
+                </HBox>
+            </VBox>
+        </VBox>
     </top>
 
     <!-- Zone Centrale Dynamique -->

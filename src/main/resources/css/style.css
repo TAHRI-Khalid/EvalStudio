@@ -501,3 +501,103 @@
     -fx-font-size: 13px;
 }
 
+/* ==========================================================================
+   OFFICE RIBBON - Composant Ruban Moderne
+   ========================================================================== */
+
+.ribbon-container {
+    -fx-background-color: -color-bg-default;
+    -fx-border-color: transparent transparent -color-border-muted transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.ribbon-tabs-bar {
+    -fx-background-color: -color-bg-subtle;
+    -fx-border-color: transparent transparent -color-border-muted transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 2 12 0 12;
+}
+
+.ribbon-tab-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: -color-fg-muted;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+    -fx-padding: 6 14;
+    -fx-background-radius: 6px 6px 0 0;
+    -fx-border-color: transparent;
+    -fx-cursor: hand;
+}
+
+.ribbon-tab-btn:hover {
+    -fx-background-color: -color-bg-default;
+    -fx-text-fill: -color-fg-default;
+}
+
+.ribbon-tab-btn.active, .ribbon-tab-btn:selected {
+    -fx-background-color: -color-bg-default;
+    -fx-text-fill: -color-accent-emphasis;
+    -fx-border-color: -color-border-muted -color-border-muted transparent -color-border-muted;
+    -fx-border-width: 1 1 0 1;
+    -fx-border-radius: 6px 6px 0 0;
+}
+
+.ribbon-toolbar {
+    -fx-background-color: -color-bg-default;
+    -fx-padding: 6 12 4 12;
+    -fx-min-height: 86px;
+    -fx-pref-height: 86px;
+    -fx-max-height: 86px;
+}
+
+.ribbon-group-box {
+    -fx-border-color: transparent -color-border-muted transparent transparent;
+    -fx-border-width: 0 1 0 0;
+    -fx-padding: 0 10 0 4;
+    -fx-alignment: CENTER;
+}
+
+.ribbon-group-title {
+    -fx-font-size: 9px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -color-fg-subtle;
+    -fx-alignment: CENTER;
+    -fx-padding: 2 0 0 0;
+}
+
+.ribbon-action-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: -color-fg-default;
+    -fx-font-size: 11px;
+    -fx-font-weight: 500;
+    -fx-padding: 4 8;
+    -fx-background-radius: 6px;
+    -fx-cursor: hand;
+    -fx-alignment: CENTER;
+    -fx-content-display: TOP;
+}
+
+.ribbon-action-btn:hover {
+    -fx-background-color: -color-bg-subtle;
+    -fx-text-fill: -color-accent-emphasis;
+}
+
+.ribbon-action-btn:pressed {
+    -fx-background-color: -color-accent-subtle;
+}
+
+.ribbon-action-btn-small {
+    -fx-background-color: transparent;
+    -fx-text-fill: -color-fg-default;
+    -fx-font-size: 11px;
+    -fx-padding: 3 6;
+    -fx-background-radius: 4px;
+    -fx-cursor: hand;
+    -fx-alignment: CENTER_LEFT;
+}
+
+.ribbon-action-btn-small:hover {
+    -fx-background-color: -color-bg-subtle;
+}
+
+

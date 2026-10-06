@@ -11,7 +11,6 @@
 
     <!-- En-tête -->
     <HBox alignment="CENTER_LEFT" spacing="12" styleClass="view-header">
-        <Button fx:id="btnBack" text="← Retour" styleClass="back-link" onAction="#onBack"/>
         <VBox HBox.hgrow="ALWAYS">
             <Label fx:id="lblTitle" text="Concepteur d'Évaluation" styleClass="page-title"/>
         </VBox>

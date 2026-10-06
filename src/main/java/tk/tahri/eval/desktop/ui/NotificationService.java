@@ -10,7 +10,39 @@ import java.util.Optional;
 @Service
 public class NotificationService {
 
+    public enum ToastType { INFO, SUCCESS, WARNING, ERROR }
+
+    public interface ToastPresenter {
+        void showToast(String message, ToastType type);
+    }
+
+    private ToastPresenter toastPresenter;
+
+    public void setToastPresenter(ToastPresenter presenter) {
+        this.toastPresenter = presenter;
+    }
+
+    public void showToast(String message, ToastType type) {
+        if (toastPresenter != null) {
+            Platform.runLater(() -> toastPresenter.showToast(message, type));
+        } else {
+            switch (type) {
+                case ERROR -> showError("Erreur", message);
+                case WARNING -> showWarning("Attention", message);
+                default -> showInfo("Information", message);
+            }
+        }
+    }
+
+    public void showToast(String message) {
+        showToast(message, ToastType.INFO);
+    }
+
     public void showInfo(String title, String message) {
+        if (toastPresenter != null) {
+            showToast(message, ToastType.INFO);
+            return;
+        }
         Platform.runLater(() -> {
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
             alert.setTitle(title);
@@ -21,6 +53,10 @@ public class NotificationService {
     }
 
     public void showWarning(String title, String message) {
+        if (toastPresenter != null) {
+            showToast(message, ToastType.WARNING);
+            return;
+        }
         Platform.runLater(() -> {
             Alert alert = new Alert(Alert.AlertType.WARNING);
             alert.setTitle(title);

@@ -12,7 +12,7 @@
 
     <!-- Header Supérieur avec Bannière du cours actif intégrée -->
     <top>
-        <HBox alignment="CENTER_LEFT" spacing="12" styleClass="top-header" style="-fx-padding: 8 20; -fx-background-color: #ffffff; -fx-border-color: #c2c6d5; -fx-border-width: 0 0 1 0;">
+        <HBox alignment="CENTER_LEFT" spacing="12" styleClass="top-header">
             <!-- Brand Logo & Title -->
             <HBox alignment="CENTER_LEFT" spacing="10">
                 <HBox alignment="CENTER" styleClass="brand-badge">
@@ -31,17 +31,18 @@
 
             <Separator fx:id="headerSeparator" orientation="VERTICAL" style="-fx-padding: 0 4;"/>
 
-            <!-- Bannière contextuelle du groupe actif -->
-            <HBox fx:id="courseBannerBox" alignment="CENTER_LEFT" spacing="10">
+            <!-- Bannière contextuelle du groupe actif (Élément de navigation interactive) -->
+            <HBox fx:id="courseBannerBox" alignment="CENTER_LEFT" spacing="10" onMouseClicked="#onCourseBannerClicked"
+                  style="-fx-cursor: hand; -fx-padding: 4 8; -fx-background-radius: 8px;">
                 <HBox fx:id="bannerAvatarBox" alignment="CENTER"
                       style="-fx-background-color: #004faa; -fx-background-radius: 8px; -fx-min-width: 34px; -fx-min-height: 34px; -fx-max-width: 34px; -fx-max-height: 34px;">
                     <FontIcon iconLiteral="fth-users" iconColor="white" iconSize="16"/>
                 </HBox>
                 <VBox alignment="CENTER_LEFT" spacing="1">
                     <Label fx:id="lblCourseTitle" text="Sélectionnez un groupe"
-                           style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #181c20;"/>
+                           style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: -color-fg-default;"/>
                     <Label fx:id="lblCourseSubtitle" text="Filière • Année"
-                           style="-fx-font-size: 11px; -fx-text-fill: #424753;"/>
+                           style="-fx-font-size: 11px; -fx-text-fill: -color-fg-muted;"/>
                 </VBox>
             </HBox>
 
@@ -49,16 +50,17 @@
             <Separator fx:id="evalSeparator" orientation="VERTICAL" style="-fx-padding: 0 4;" visible="false" managed="false"/>
 
             <!-- Bannière contextuelle de l'évaluation active -->
-            <HBox fx:id="evaluationBannerBox" alignment="CENTER_LEFT" spacing="10" visible="false" managed="false">
+            <HBox fx:id="evaluationBannerBox" alignment="CENTER_LEFT" spacing="10" visible="false" managed="false"
+                  style="-fx-padding: 4 8; -fx-background-radius: 8px;">
                 <HBox fx:id="evalAvatarBox" alignment="CENTER"
                       style="-fx-background-color: #555f71; -fx-background-radius: 8px; -fx-min-width: 34px; -fx-min-height: 34px; -fx-max-width: 34px; -fx-max-height: 34px;">
                     <FontIcon iconLiteral="fth-file-text" iconColor="white" iconSize="16"/>
                 </HBox>
                 <VBox alignment="CENTER_LEFT" spacing="1">
                     <Label fx:id="lblEvaluationTitle" text="Évaluation"
-                           style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #004faa;"/>
+                           style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: -color-accent-emphasis;"/>
                     <Label fx:id="lblEvaluationSubtitle" text="Détails de l'évaluation"
-                           style="-fx-font-size: 11px; -fx-text-fill: #424753;"/>
+                           style="-fx-font-size: 11px; -fx-text-fill: -color-fg-muted;"/>
                 </VBox>
             </HBox>
 
@@ -84,8 +86,8 @@
 
     <!-- Barre d'état discrète -->
     <bottom>
-        <HBox spacing="10" alignment="CENTER_LEFT" style="-fx-padding: 4 20; -fx-background-color: #ffffff; -fx-border-color: #c2c6d5 transparent transparent transparent; -fx-border-width: 1 0 0 0;">
-            <Label fx:id="statusLabel" text="Prêt • Base de données locale H2 active" style="-fx-font-size: 11px; -fx-text-fill: #424753;"/>
+        <HBox spacing="10" alignment="CENTER_LEFT" styleClass="status-bar">
+            <Label fx:id="statusLabel" text="Prêt • Base de données locale H2 active" styleClass="status-label"/>
         </HBox>
     </bottom>
 </BorderPane>

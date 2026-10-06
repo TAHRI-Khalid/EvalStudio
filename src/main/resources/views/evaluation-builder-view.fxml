@@ -15,6 +15,8 @@
         <VBox HBox.hgrow="ALWAYS">
             <Label fx:id="lblTitle" text="Concepteur d'Évaluation" styleClass="page-title"/>
         </VBox>
+        <Label fx:id="lblSaveStatus" text="" style="-fx-font-size: 12px; -fx-text-fill: -color-fg-muted;"/>
+        <Label fx:id="lblTotalPoints" text="Total : 0.00 pts" styleClass="tag-badge" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-background-color: -color-accent-subtle; -fx-text-fill: -color-accent-emphasis;"/>
         <Button fx:id="btnAddQuestion" text="Ajouter une question" onAction="#onAddQuestion"/>
         <Button fx:id="btnPreviewDraft" text="Aperçu Brouillon PDF" onAction="#onPreviewDraft"/>
         <Button fx:id="btnSave" text="Enregistrer" onAction="#onSave"/>
@@ -89,9 +91,20 @@
         <VBox spacing="12" style="-fx-padding: 0 0 0 10;">
             <HBox alignment="CENTER_LEFT" spacing="8">
                 <Label text="Questions de l'épreuve" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+                <Label fx:id="lblQuestionsCount" text="(0 question)" style="-fx-text-fill: -color-fg-muted; -fx-font-size: 12px;"/>
+                <Pane HBox.hgrow="ALWAYS"/>
+                <Label fx:id="lblHeaderTotalPoints" text="Barème total : 0.00 pts" style="-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: -color-accent-emphasis;"/>
             </HBox>
 
-            <ListView fx:id="questionsListView" VBox.vgrow="ALWAYS"/>
+            <ListView fx:id="questionsListView" VBox.vgrow="ALWAYS">
+                <placeholder>
+                    <VBox alignment="CENTER" spacing="10" styleClass="empty-state-box">
+                        <FontIcon iconLiteral="fth-help-circle" iconColor="#74777f" iconSize="36"/>
+                        <Label text="Aucune question pour le moment" styleClass="empty-state-title" style="-fx-font-size: 14px;"/>
+                        <Label text="Cliquez sur « Ajouter une question » ci-dessus pour composer l'épreuve." styleClass="empty-state-subtitle"/>
+                    </VBox>
+                </placeholder>
+            </ListView>
         </VBox>
     </SplitPane>
 </VBox>

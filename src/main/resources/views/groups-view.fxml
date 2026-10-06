@@ -21,12 +21,12 @@
         </HBox>
 
         <!-- Message d'état vide -->
-        <VBox fx:id="emptyStateBox" alignment="CENTER" spacing="12" visible="false" managed="false" style="-fx-padding: 60 0;">
-            <HBox alignment="CENTER" style="-fx-background-color: #ebeef4; -fx-background-radius: 32px; -fx-min-width: 64px; -fx-min-height: 64px;">
-                <FontIcon iconLiteral="fth-users" iconColor="#424753" iconSize="28"/>
+        <VBox fx:id="emptyStateBox" alignment="CENTER" spacing="12" visible="false" managed="false" styleClass="empty-state-box">
+            <HBox alignment="CENTER" styleClass="empty-state-icon-container">
+                <FontIcon iconLiteral="fth-users" iconColor="#004faa" iconSize="32"/>
             </HBox>
-            <Label text="Aucun groupe" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #181c20;"/>
-            <Label text="Créez votre premier groupe pour commencer" style="-fx-text-fill: #424753; -fx-font-size: 13px;"/>
+            <Label text="Aucun groupe" styleClass="empty-state-title"/>
+            <Label text="Créez votre premier groupe pour commencer à gérer vos étudiants et évaluations" styleClass="empty-state-subtitle"/>
             <Button text="Créer un groupe" styleClass="btn-primary" onAction="#onNewGroup"/>
         </VBox>
 

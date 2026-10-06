@@ -5,6 +5,8 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.SortedList;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -75,6 +77,17 @@ public class CorrectionViewController implements Initializable {
     @FXML private Label lblMin;
     @FXML private Label lblMax;
     @FXML private Label lblTotalCopies;
+    @FXML private Label lblSuccessRate;
+    @FXML private Label lblMedianStd;
+    @FXML private Label lblDist0to5;
+    @FXML private Label lblDist5to10;
+    @FXML private Label lblDist10to15;
+    @FXML private Label lblDist15to20;
+    @FXML private ProgressBar progressSuccessRate;
+    @FXML private TextField txtSearchGrade;
+    @FXML private Button btnFilterAll;
+    @FXML private Button btnFilterPassed;
+    @FXML private Button btnFilterFailed;
 
     @FXML private TableView<StudentGrade> gradesTable;
     @FXML private TableColumn<StudentGrade, String> colMatricule;
@@ -96,6 +109,11 @@ public class CorrectionViewController implements Initializable {
     private final GradeService gradeService;
     private final NotificationService notificationService;
     private final MainLayoutController mainLayoutController;
+
+    private enum GradeFilter { ALL, PASSED, FAILED }
+    private GradeFilter currentFilter = GradeFilter.ALL;
+    private FilteredList<StudentGrade> filteredGradesList;
+    private SortedList<StudentGrade> sortedGradesList;
 
     private Group currentGroup;
     private Evaluation currentEvaluation;
@@ -343,7 +361,10 @@ public class CorrectionViewController implements Initializable {
             return row;
         });
 
-        gradesTable.setItems(studentGradesList);
+        filteredGradesList = new FilteredList<>(studentGradesList, p -> true);
+        sortedGradesList = new SortedList<>(filteredGradesList);
+        sortedGradesList.comparatorProperty().bind(gradesTable.comparatorProperty());
+        gradesTable.setItems(sortedGradesList);
     }
 
     private void setupIcons() {
@@ -356,6 +377,9 @@ public class CorrectionViewController implements Initializable {
         if (btnExportExcel != null) btnExportExcel.setGraphic(new FontIcon(Feather.FILE_TEXT));
         if (btnExportPdfReport != null) btnExportPdfReport.setGraphic(new FontIcon(Feather.PRINTER));
         if (btnViewAnnotatedPdf != null) btnViewAnnotatedPdf.setGraphic(new FontIcon(Feather.CHECK_SQUARE));
+        if (btnFilterAll != null) btnFilterAll.setGraphic(new FontIcon(Feather.LIST));
+        if (btnFilterPassed != null) btnFilterPassed.setGraphic(new FontIcon(Feather.CHECK_CIRCLE));
+        if (btnFilterFailed != null) btnFilterFailed.setGraphic(new FontIcon(Feather.ALERT_CIRCLE));
     }
 
     private void setupDropZone() {
@@ -366,7 +390,22 @@ public class CorrectionViewController implements Initializable {
             event.consume();
         });
 
+        dropZone.setOnDragEntered(event -> {
+            if (event.getGestureSource() != dropZone && event.getDragboard().hasFiles()) {
+                if (!dropZone.getStyleClass().contains("drag-active")) {
+                    dropZone.getStyleClass().add("drag-active");
+                }
+            }
+            event.consume();
+        });
+
+        dropZone.setOnDragExited(event -> {
+            dropZone.getStyleClass().remove("drag-active");
+            event.consume();
+        });
+
         dropZone.setOnDragDropped(event -> {
+            dropZone.getStyleClass().remove("drag-active");
             Dragboard db = event.getDragboard();
             boolean success = false;
             if (db.hasFiles() && !db.getFiles().isEmpty()) {
@@ -398,6 +437,75 @@ public class CorrectionViewController implements Initializable {
             if (n != null && currentGroup != null && mainLayoutController != null) {
                 mainLayoutController.setStatus("Étudiant sélectionné : " + n.fullName() + " • Note : " + (n.score() != null ? String.format("%.2f", n.score()) : "-"));
             }
+        });
+
+        if (txtSearchGrade != null) {
+            txtSearchGrade.textProperty().addListener((obs, oldVal, newVal) -> updateFilterPredicate());
+        }
+        updateFilterButtonStyles();
+    }
+
+    @FXML
+    public void onFilterAll() {
+        currentFilter = GradeFilter.ALL;
+        updateFilterPredicate();
+        updateFilterButtonStyles();
+    }
+
+    @FXML
+    public void onFilterPassed() {
+        currentFilter = GradeFilter.PASSED;
+        updateFilterPredicate();
+        updateFilterButtonStyles();
+    }
+
+    @FXML
+    public void onFilterFailed() {
+        currentFilter = GradeFilter.FAILED;
+        updateFilterPredicate();
+        updateFilterButtonStyles();
+    }
+
+    private void updateFilterButtonStyles() {
+        String activeStyle = "-fx-background-color: -color-accent-emphasis; -fx-text-fill: -color-fg-on-emphasis; -fx-font-weight: bold;";
+        String defaultStyle = "";
+
+        if (btnFilterAll != null) {
+            btnFilterAll.setStyle(currentFilter == GradeFilter.ALL ? activeStyle : defaultStyle);
+        }
+        if (btnFilterPassed != null) {
+            btnFilterPassed.setStyle(currentFilter == GradeFilter.PASSED ? activeStyle : defaultStyle);
+        }
+        if (btnFilterFailed != null) {
+            btnFilterFailed.setStyle(currentFilter == GradeFilter.FAILED ? activeStyle : defaultStyle);
+        }
+    }
+
+    private void updateFilterPredicate() {
+        if (filteredGradesList == null) return;
+        String search = (txtSearchGrade != null && txtSearchGrade.getText() != null)
+                ? txtSearchGrade.getText().trim().toLowerCase() : "";
+
+        filteredGradesList.setPredicate(grade -> {
+            if (grade == null) return false;
+
+            // Filtre par statut (Admis / Ajourné)
+            if (currentFilter == GradeFilter.PASSED) {
+                if (grade.score() == null || grade.score() < 10.0) return false;
+            } else if (currentFilter == GradeFilter.FAILED) {
+                if (grade.score() == null || grade.score() >= 10.0) return false;
+            }
+
+            // Filtre par texte de recherche
+            if (!search.isEmpty()) {
+                String mat = grade.matriculation() != null ? grade.matriculation().toLowerCase() : "";
+                String nom = grade.lastName() != null ? grade.lastName().toLowerCase() : "";
+                String prenom = grade.firstName() != null ? grade.firstName().toLowerCase() : "";
+                String full = grade.fullName().toLowerCase();
+                return mat.contains(search) || nom.contains(search) || prenom.contains(search) || full.contains(search);
+            }
+
+            return true;
         });
     }
 
@@ -639,15 +747,70 @@ public class CorrectionViewController implements Initializable {
                 studentGradesList.setAll(resp.students());
 
                 var stats = resp.statistics();
-                lblTotalCopies.setText(String.valueOf(resp.students().size()));
+                int totalStudents = resp.students().size();
+                lblTotalCopies.setText(String.valueOf(totalStudents));
+
+                long countPassed = resp.students().stream()
+                        .filter(s -> s.score() != null && s.score() >= 10.0)
+                        .count();
+                long countScored = resp.students().stream()
+                        .filter(s -> s.score() != null)
+                        .count();
+
+                if (countScored > 0) {
+                    double rate = (countPassed * 100.0) / countScored;
+                    if (lblSuccessRate != null) {
+                        lblSuccessRate.setText(String.format("%.1f %%", rate));
+                        if (rate >= 50.0) {
+                            lblSuccessRate.setStyle("-fx-text-fill: -color-success-emphasis; -fx-font-weight: 800;");
+                        } else {
+                            lblSuccessRate.setStyle("-fx-text-fill: -color-danger-emphasis; -fx-font-weight: 800;");
+                        }
+                    }
+                    if (progressSuccessRate != null) {
+                        progressSuccessRate.setProgress(rate / 100.0);
+                    }
+                } else {
+                    if (lblSuccessRate != null) {
+                        lblSuccessRate.setText("-");
+                        lblSuccessRate.setStyle("");
+                    }
+                    if (progressSuccessRate != null) {
+                        progressSuccessRate.setProgress(0.0);
+                    }
+                }
+
                 lblAverage.setText(stats.average() != null ? String.format("%.2f / 20", stats.average()) : "-");
                 lblMin.setText(stats.min() != null ? String.format("%.2f", stats.min()) : "-");
                 lblMax.setText(stats.max() != null ? String.format("%.2f", stats.max()) : "-");
+
+                if (lblMedianStd != null) {
+                    if (stats.median() != null && stats.stdDeviation() != null) {
+                        lblMedianStd.setText(String.format("%.2f | %.2f", stats.median(), stats.stdDeviation()));
+                    } else if (stats.median() != null) {
+                        lblMedianStd.setText(String.format("%.2f", stats.median()));
+                    } else {
+                        lblMedianStd.setText("-");
+                    }
+                }
+
+                // Répartition des notes par tranches
+                long d0to5 = resp.students().stream().filter(s -> s.score() != null && s.score() < 5.0).count();
+                long d5to10 = resp.students().stream().filter(s -> s.score() != null && s.score() >= 5.0 && s.score() < 10.0).count();
+                long d10to15 = resp.students().stream().filter(s -> s.score() != null && s.score() >= 10.0 && s.score() < 15.0).count();
+                long d15to20 = resp.students().stream().filter(s -> s.score() != null && s.score() >= 15.0).count();
+
+                if (lblDist0to5 != null) lblDist0to5.setText(String.valueOf(d0to5));
+                if (lblDist5to10 != null) lblDist5to10.setText(String.valueOf(d5to10));
+                if (lblDist10to15 != null) lblDist10to15.setText(String.valueOf(d10to15));
+                if (lblDist15to20 != null) lblDist15to20.setText(String.valueOf(d15to20));
 
                 boolean hasGrades = !resp.students().isEmpty();
                 if (btnExportExcel != null) btnExportExcel.setDisable(!hasGrades);
                 if (btnExportPdfReport != null) btnExportPdfReport.setDisable(!hasGrades);
                 if (btnViewAnnotatedPdf != null) btnViewAnnotatedPdf.setDisable(!hasGrades);
+
+                updateFilterPredicate();
 
                 evaluationService.getEvaluation(evaluationId);
             } catch (Exception e) {
@@ -663,6 +826,19 @@ public class CorrectionViewController implements Initializable {
         lblAverage.setText("-");
         lblMin.setText("-");
         lblMax.setText("-");
+        if (lblSuccessRate != null) {
+            lblSuccessRate.setText("-");
+            lblSuccessRate.setStyle("");
+        }
+        if (lblMedianStd != null) lblMedianStd.setText("-");
+        if (lblDist0to5 != null) lblDist0to5.setText("0");
+        if (lblDist5to10 != null) lblDist5to10.setText("0");
+        if (lblDist10to15 != null) lblDist10to15.setText("0");
+        if (lblDist15to20 != null) lblDist15to20.setText("0");
+        if (progressSuccessRate != null) progressSuccessRate.setProgress(0.0);
+        if (txtSearchGrade != null) txtSearchGrade.clear();
+        currentFilter = GradeFilter.ALL;
+        updateFilterButtonStyles();
         if (btnExportExcel != null) btnExportExcel.setDisable(true);
         if (btnExportPdfReport != null) btnExportPdfReport.setDisable(true);
         if (btnViewAnnotatedPdf != null) btnViewAnnotatedPdf.setDisable(true);

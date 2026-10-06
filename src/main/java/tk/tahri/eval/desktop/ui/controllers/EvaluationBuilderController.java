@@ -56,6 +56,10 @@ public class EvaluationBuilderController implements Initializable {
     private static final Logger log = LoggerFactory.getLogger(EvaluationBuilderController.class);
 
     @FXML private Label lblTitle;
+    @FXML private Label lblSaveStatus;
+    @FXML private Label lblTotalPoints;
+    @FXML private Label lblQuestionsCount;
+    @FXML private Label lblHeaderTotalPoints;
     @FXML private HBox lockedBanner;
     @FXML private TextField txtDesignation;
     @FXML private ComboBox<String> comboType;
@@ -106,6 +110,7 @@ public class EvaluationBuilderController implements Initializable {
         setupIcons();
         setupSpinners();
         setupListView();
+        setupInputListeners();
     }
 
     private void setupIcons() {
@@ -144,10 +149,20 @@ public class EvaluationBuilderController implements Initializable {
                     VBox contentBox = new VBox(6);
                     HBox.setHgrow(contentBox, Priority.ALWAYS);
 
+                    HBox titleRow = new HBox(8);
+                    titleRow.setAlignment(Pos.CENTER_LEFT);
+
                     Label title = new Label(index + ". " + item.content());
                     title.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: #181c20;");
                     title.setWrapText(true);
-                    contentBox.getChildren().add(title);
+                    HBox.setHgrow(title, Priority.ALWAYS);
+
+                    Label ptsBadge = new Label(String.format("%.2f pt%s", item.scoreIfCorrect(), item.scoreIfCorrect() > 1 ? "s" : ""));
+                    ptsBadge.getStyleClass().add("tag-badge");
+                    ptsBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: -color-accent-emphasis;");
+
+                    titleRow.getChildren().addAll(title, ptsBadge);
+                    contentBox.getChildren().add(titleRow);
 
                     if (item.imagePath() != null && !item.imagePath().isBlank()) {
                         Path imgPath = imageStorageService.getImagePath(item.imagePath(), ImageStorageService.ImageFolder.QUESTION_IMAGES, false);
@@ -188,8 +203,44 @@ public class EvaluationBuilderController implements Initializable {
 
                     boolean isLocked = currentEvaluation != null && currentEvaluation.getState() != EvaluationState.CONCEPTION;
 
-                    VBox actionButtons = new VBox(4);
+                    VBox actionButtons = new VBox(3);
                     actionButtons.setAlignment(Pos.TOP_CENTER);
+
+                    Button btnMoveUp = new Button();
+                    btnMoveUp.getStyleClass().add("card-action-btn");
+                    btnMoveUp.setGraphic(new FontIcon(Feather.CHEVRON_UP));
+                    btnMoveUp.setTooltip(new Tooltip("Monter d'un rang"));
+                    btnMoveUp.setDisable(isLocked || getIndex() == 0);
+                    btnMoveUp.setVisible(!isLocked);
+                    btnMoveUp.setManaged(!isLocked);
+                    btnMoveUp.setOnAction(e -> {
+                        e.consume();
+                        int idx = getIndex();
+                        if (idx > 0) {
+                            Question q = questionsList.remove(idx);
+                            questionsList.add(idx - 1, q);
+                            questionsListView.getSelectionModel().select(idx - 1);
+                            updateSaveStatusModified();
+                        }
+                    });
+
+                    Button btnMoveDown = new Button();
+                    btnMoveDown.getStyleClass().add("card-action-btn");
+                    btnMoveDown.setGraphic(new FontIcon(Feather.CHEVRON_DOWN));
+                    btnMoveDown.setTooltip(new Tooltip("Descendre d'un rang"));
+                    btnMoveDown.setDisable(isLocked || getIndex() >= questionsList.size() - 1);
+                    btnMoveDown.setVisible(!isLocked);
+                    btnMoveDown.setManaged(!isLocked);
+                    btnMoveDown.setOnAction(e -> {
+                        e.consume();
+                        int idx = getIndex();
+                        if (idx < questionsList.size() - 1) {
+                            Question q = questionsList.remove(idx);
+                            questionsList.add(idx + 1, q);
+                            questionsListView.getSelectionModel().select(idx + 1);
+                            updateSaveStatusModified();
+                        }
+                    });
 
                     Button btnEdit = new Button();
                     btnEdit.getStyleClass().add("card-action-btn");
@@ -223,9 +274,10 @@ public class EvaluationBuilderController implements Initializable {
                             return;
                         }
                         questionsList.remove(item);
+                        updateSaveStatusModified();
                     });
 
-                    actionButtons.getChildren().addAll(btnEdit, btnDelete);
+                    actionButtons.getChildren().addAll(btnMoveUp, btnMoveDown, btnEdit, btnDelete);
 
                     cellContent.getChildren().addAll(contentBox, actionButtons);
                     setGraphic(cellContent);
@@ -244,6 +296,43 @@ public class EvaluationBuilderController implements Initializable {
                 }
             }
         });
+
+        questionsList.addListener((javafx.collections.ListChangeListener<Question>) c -> {
+            recalculateTotalPoints();
+        });
+    }
+
+    private void setupInputListeners() {
+        if (txtDesignation != null) txtDesignation.textProperty().addListener((o, ov, nv) -> updateSaveStatusModified());
+        if (comboType != null) comboType.valueProperty().addListener((o, ov, nv) -> updateSaveStatusModified());
+        if (spinDuration != null) spinDuration.valueProperty().addListener((o, ov, nv) -> updateSaveStatusModified());
+        if (comboColumns != null) comboColumns.valueProperty().addListener((o, ov, nv) -> updateSaveStatusModified());
+        if (chkShuffleQuestions != null) chkShuffleQuestions.selectedProperty().addListener((o, ov, nv) -> updateSaveStatusModified());
+        if (chkShuffleAnswers != null) chkShuffleAnswers.selectedProperty().addListener((o, ov, nv) -> updateSaveStatusModified());
+        if (chkDoubleSided != null) chkDoubleSided.selectedProperty().addListener((o, ov, nv) -> updateSaveStatusModified());
+        if (txtScoreCorrect != null) txtScoreCorrect.textProperty().addListener((o, ov, nv) -> updateSaveStatusModified());
+        if (txtScoreEmpty != null) txtScoreEmpty.textProperty().addListener((o, ov, nv) -> updateSaveStatusModified());
+        if (txtScoreIncorrect != null) txtScoreIncorrect.textProperty().addListener((o, ov, nv) -> updateSaveStatusModified());
+    }
+
+    private void recalculateTotalPoints() {
+        double total = questionsList.stream().mapToDouble(Question::scoreIfCorrect).sum();
+        String totalText = String.format("Total : %.2f pts", total);
+        if (lblTotalPoints != null) lblTotalPoints.setText(totalText);
+        if (lblHeaderTotalPoints != null) lblHeaderTotalPoints.setText(String.format("Barème total : %.2f pts", total));
+        if (lblQuestionsCount != null) {
+            lblQuestionsCount.setText("(" + questionsList.size() + " question" + (questionsList.size() > 1 ? "s" : "") + ")");
+        }
+    }
+
+    private void updateSaveStatusModified() {
+        if (currentEvaluation != null && currentEvaluation.getState() != EvaluationState.CONCEPTION) {
+            return;
+        }
+        if (lblSaveStatus != null) {
+            lblSaveStatus.setText("● Non enregistré");
+            lblSaveStatus.setStyle("-fx-text-fill: #b45309; -fx-font-size: 11px; -fx-font-weight: 600;");
+        }
     }
 
     public void loadEvaluation(String evaluationId) {
@@ -301,6 +390,10 @@ public class EvaluationBuilderController implements Initializable {
         }
 
         questionsList.setAll(currentEvaluation.getQuestions());
+        recalculateTotalPoints();
+        if (lblSaveStatus != null) {
+            lblSaveStatus.setText("");
+        }
     }
 
     private void saveEvaluationData() {
@@ -332,6 +425,10 @@ public class EvaluationBuilderController implements Initializable {
 
         currentEvaluation.setQuestions(new ArrayList<>(questionsList));
         evaluationService.saveEvaluation(currentEvaluation);
+        if (lblSaveStatus != null) {
+            lblSaveStatus.setText("✓ Enregistré à " + java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")));
+            lblSaveStatus.setStyle("-fx-text-fill: #1b8744; -fx-font-weight: 600; -fx-font-size: 11px;");
+        }
     }
 
     @FXML
@@ -638,6 +735,7 @@ public class EvaluationBuilderController implements Initializable {
             } else {
                 questionsList.add(q);
             }
+            updateSaveStatusModified();
         });
     }
 

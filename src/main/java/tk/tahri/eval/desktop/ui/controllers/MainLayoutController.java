@@ -1,14 +1,27 @@
 package tk.tahri.eval.desktop.ui.controllers;
 
+import javafx.animation.FadeTransition;
+import javafx.animation.PauseTransition;
+import javafx.animation.SequentialTransition;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
+import javafx.scene.control.TextField;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
+import javafx.util.Duration;
 import org.kordamp.ikonli.feather.Feather;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.slf4j.Logger;
@@ -18,6 +31,7 @@ import org.springframework.stereotype.Component;
 import tk.tahri.eval.desktop.model.Group;
 import tk.tahri.eval.desktop.model.Evaluation;
 import tk.tahri.eval.desktop.service.GroupService;
+import tk.tahri.eval.desktop.ui.NotificationService;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,7 +40,7 @@ import java.util.List;
 import java.util.ResourceBundle;
 
 @Component
-public class MainLayoutController implements Initializable {
+public class MainLayoutController implements Initializable, NotificationService.ToastPresenter {
 
     private static final Logger log = LoggerFactory.getLogger(MainLayoutController.class);
 
@@ -53,20 +67,28 @@ public class MainLayoutController implements Initializable {
 
     private final ApplicationContext applicationContext;
     private final GroupService groupService;
+    private final NotificationService notificationService;
 
     private Group activeGroup;
     private Evaluation activeEvaluation;
     private Node workspaceNode;
     private GroupWorkspaceViewController workspaceController;
 
-    public MainLayoutController(ApplicationContext applicationContext, GroupService groupService) {
+    public MainLayoutController(ApplicationContext applicationContext,
+                                GroupService groupService,
+                                NotificationService notificationService) {
         this.applicationContext = applicationContext;
         this.groupService = groupService;
+        this.notificationService = notificationService;
     }
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        if (notificationService != null) {
+            notificationService.setToastPresenter(this);
+        }
         setupIcons();
+        setupShortcutsListener();
         showGroupsView();
     }
 
@@ -424,5 +446,148 @@ public class MainLayoutController implements Initializable {
         } catch (IOException e) {
             log.error("Échec du chargement de la vue FXML : {}", fxmlPath, e);
         }
+    }
+
+    @FXML
+    public void onCourseBannerClicked() {
+        if (activeGroup != null) {
+            clearActiveEvaluation();
+            showWorkspace(activeGroup, 0);
+        }
+    }
+
+    private void setupShortcutsListener() {
+        if (contentArea != null) {
+            contentArea.sceneProperty().addListener((obs, oldScene, newScene) -> {
+                if (newScene != null) {
+                    setupKeyboardShortcuts(newScene);
+                }
+            });
+        }
+    }
+
+    private void setupKeyboardShortcuts(Scene scene) {
+        scene.getAccelerators().put(new KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_DOWN), this::focusSearchField);
+        scene.getAccelerators().put(new KeyCodeCombination(KeyCode.S, KeyCombination.CONTROL_DOWN), this::triggerSaveIfBuilder);
+        scene.getAccelerators().put(new KeyCodeCombination(KeyCode.ESCAPE), this::handleEscape);
+    }
+
+    private void focusSearchField() {
+        if (contentArea == null) return;
+        TextField search = findSearchField(contentArea);
+        if (search != null) {
+            search.requestFocus();
+            search.selectAll();
+        }
+    }
+
+    private TextField findSearchField(Node root) {
+        if (root instanceof TextField tf) {
+            if (tf.getStyleClass().contains("search-field") || (tf.getPromptText() != null && tf.getPromptText().toLowerCase().contains("recherch"))) {
+                return tf;
+            }
+        }
+        if (root instanceof Parent parent) {
+            for (Node child : parent.getChildrenUnmodifiable()) {
+                TextField found = findSearchField(child);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private void triggerSaveIfBuilder() {
+        if (activeEvaluation != null && contentArea != null) {
+            Button btnSave = findButtonByText(contentArea, "Enregistrer");
+            if (btnSave != null && !btnSave.isDisable()) {
+                btnSave.fire();
+            }
+        }
+    }
+
+    private void handleEscape() {
+        if (activeEvaluation != null && activeGroup != null) {
+            showWorkspace(activeGroup, 1);
+        } else if (activeGroup != null) {
+            showGroupsView();
+        }
+    }
+
+    private Button findButtonByText(Node root, String text) {
+        if (root instanceof Button btn && text.equalsIgnoreCase(btn.getText())) {
+            return btn;
+        }
+        if (root instanceof Parent parent) {
+            for (Node child : parent.getChildrenUnmodifiable()) {
+                Button found = findButtonByText(child, text);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public void showToast(String message, NotificationService.ToastType type) {
+        if (contentArea == null) return;
+
+        HBox toast = new HBox(10);
+        toast.getStyleClass().add("toast-container");
+        toast.setMaxWidth(420);
+        toast.setMaxHeight(HBox.USE_PREF_SIZE);
+        StackPane.setAlignment(toast, Pos.BOTTOM_RIGHT);
+        StackPane.setMargin(toast, new Insets(0, 24, 24, 0));
+
+        FontIcon icon;
+        switch (type) {
+            case SUCCESS -> {
+                toast.getStyleClass().add("toast-success");
+                icon = new FontIcon(Feather.CHECK_CIRCLE);
+                icon.setIconColor(javafx.scene.paint.Color.web("#1b8744"));
+            }
+            case ERROR -> {
+                toast.getStyleClass().add("toast-error");
+                icon = new FontIcon(Feather.ALERT_TRIANGLE);
+                icon.setIconColor(javafx.scene.paint.Color.web("#ba1a1a"));
+            }
+            case WARNING -> {
+                toast.setStyle("-fx-border-color: #f59e0b;");
+                icon = new FontIcon(Feather.ALERT_CIRCLE);
+                icon.setIconColor(javafx.scene.paint.Color.web("#b45309"));
+            }
+            default -> {
+                toast.setStyle("-fx-border-color: -color-accent-emphasis;");
+                icon = new FontIcon(Feather.INFO);
+                icon.setIconColor(javafx.scene.paint.Color.web("#004faa"));
+            }
+        }
+        icon.setIconSize(18);
+
+        Label lbl = new Label(message);
+        lbl.setWrapText(true);
+        lbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 500; -fx-text-fill: -color-fg-default;");
+        HBox.setHgrow(lbl, Priority.ALWAYS);
+
+        Button btnClose = new Button();
+        btnClose.getStyleClass().add("card-action-btn");
+        btnClose.setGraphic(new FontIcon(Feather.X));
+        btnClose.setOnAction(e -> contentArea.getChildren().remove(toast));
+
+        toast.getChildren().addAll(icon, lbl, btnClose);
+        toast.setOpacity(0.0);
+
+        contentArea.getChildren().add(toast);
+
+        FadeTransition fadeIn = new FadeTransition(Duration.millis(220), toast);
+        fadeIn.setFromValue(0.0);
+        fadeIn.setToValue(1.0);
+
+        PauseTransition pause = new PauseTransition(Duration.millis(3500));
+        FadeTransition fadeOut = new FadeTransition(Duration.millis(250), toast);
+        fadeOut.setFromValue(1.0);
+        fadeOut.setToValue(0.0);
+        fadeOut.setOnFinished(e -> contentArea.getChildren().remove(toast));
+
+        SequentialTransition seq = new SequentialTransition(fadeIn, pause, fadeOut);
+        seq.play();
     }
 }

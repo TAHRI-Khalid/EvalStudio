@@ -467,17 +467,26 @@ public class CorrectionViewController implements Initializable {
     }
 
     private void updateFilterButtonStyles() {
-        String activeStyle = "-fx-background-color: -color-accent-emphasis; -fx-text-fill: -color-fg-on-emphasis; -fx-font-weight: bold;";
+        String activeStyle = "-fx-background-color: -color-accent-emphasis; -fx-text-fill: -color-fg-emphasis; -fx-font-weight: bold;";
         String defaultStyle = "";
 
         if (btnFilterAll != null) {
             btnFilterAll.setStyle(currentFilter == GradeFilter.ALL ? activeStyle : defaultStyle);
+            if (btnFilterAll.getGraphic() instanceof FontIcon fi) {
+                fi.setIconColor(currentFilter == GradeFilter.ALL ? javafx.scene.paint.Color.WHITE : null);
+            }
         }
         if (btnFilterPassed != null) {
             btnFilterPassed.setStyle(currentFilter == GradeFilter.PASSED ? activeStyle : defaultStyle);
+            if (btnFilterPassed.getGraphic() instanceof FontIcon fi) {
+                fi.setIconColor(currentFilter == GradeFilter.PASSED ? javafx.scene.paint.Color.WHITE : null);
+            }
         }
         if (btnFilterFailed != null) {
             btnFilterFailed.setStyle(currentFilter == GradeFilter.FAILED ? activeStyle : defaultStyle);
+            if (btnFilterFailed.getGraphic() instanceof FontIcon fi) {
+                fi.setIconColor(currentFilter == GradeFilter.FAILED ? javafx.scene.paint.Color.WHITE : null);
+            }
         }
     }
 

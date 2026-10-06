@@ -13,14 +13,6 @@
     <!-- Header Supérieur avec Bannière du cours actif intégrée -->
     <top>
         <HBox alignment="CENTER_LEFT" spacing="12" styleClass="top-header">
-            <!-- Brand Logo & Title -->
-            <HBox alignment="CENTER_LEFT" spacing="10">
-                <HBox alignment="CENTER" styleClass="brand-badge">
-                    <FontIcon iconLiteral="fth-book-open" iconColor="white" iconSize="18"/>
-                </HBox>
-                <Label text="Eval" styleClass="brand-title"/>
-            </HBox>
-
             <!-- Bouton Catalogue Mes groupes -->
             <Button fx:id="btnAllCourses" text="Mes groupes" styleClass="card-action-btn" onAction="#showGroupsView"
                     style="-fx-font-weight: 600; -fx-padding: 6 12;">

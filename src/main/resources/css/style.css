@@ -315,17 +315,33 @@
 }
 
 /* Boutons Primaires & Accents */
-.btn-primary {
+.btn-primary, .button.btn-primary {
     -fx-background-color: -color-accent-emphasis;
-    -fx-text-fill: -color-accent-fg;
+    -fx-text-fill: -color-fg-emphasis;
     -fx-font-weight: 600;
     -fx-background-radius: 8px;
     -fx-padding: 8 16 8 16;
     -fx-cursor: hand;
 }
 
-.btn-primary:hover {
+.btn-primary .text,
+.button.btn-primary .text {
+    -fx-fill: -color-fg-emphasis;
+}
+
+.btn-primary .ikonli-font-icon,
+.button.btn-primary .ikonli-font-icon {
+    -fx-icon-color: -color-fg-emphasis;
+    -fx-fill: -color-fg-emphasis;
+}
+
+.btn-primary:hover, .button.btn-primary:hover {
     -fx-opacity: 0.92;
+}
+
+.btn-primary:disabled, .button.btn-primary:disabled {
+    -fx-opacity: 0.55;
+    -fx-text-fill: -color-fg-emphasis;
 }
 
 /* Tableaux Modernes */

@@ -46,7 +46,7 @@
     <VBox fx:id="dashboardView" spacing="12" VBox.vgrow="ALWAYS" maxHeight="Infinity" visible="false" managed="false">
         <!-- Barre de navigation supérieure et infos de l'épreuve active -->
         <HBox alignment="CENTER_LEFT" spacing="12" styleClass="view-header" style="-fx-padding: 4 0 8 0;">
-            <Button fx:id="btnBackToEvalsList" text="← Liste des épreuves" onAction="#onBackToEvaluationsList" style="-fx-font-weight: bold;"/>
+            <Button fx:id="btnBackToEvalsList" text="← Retour" styleClass="back-link" onAction="#onBackToEvaluationsList" style="-fx-font-weight: bold;"/>
             <Separator orientation="VERTICAL"/>
             <Label fx:id="lblActiveEvalTitle" text="Tableau de bord de l'évaluation" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #181c20;"/>
             <Label fx:id="lblActiveEvalState" styleClass="tag-badge"/>

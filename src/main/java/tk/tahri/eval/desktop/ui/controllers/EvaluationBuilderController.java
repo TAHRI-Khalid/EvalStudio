@@ -866,12 +866,11 @@ public class EvaluationBuilderController implements Initializable {
     @FXML
     public void onBack() {
         if (mainLayoutController != null) {
-            mainLayoutController.clearActiveEvaluation();
-        }
-        if (currentEvaluation != null && currentEvaluation.getGroupId() != null) {
-            mainLayoutController.showEvaluationsForGroup(currentEvaluation.getGroupId());
+            mainLayoutController.navigateBack();
         } else {
-            mainLayoutController.showEvaluationsView();
+            if (currentEvaluation != null && currentEvaluation.getGroupId() != null) {
+                // Fallback
+            }
         }
     }
 }

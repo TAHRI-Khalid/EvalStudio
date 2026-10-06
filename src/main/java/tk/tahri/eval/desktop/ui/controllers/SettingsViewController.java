@@ -23,8 +23,21 @@ public class SettingsViewController implements Initializable {
     @FXML private Label lblOpenCvStatus;
     @FXML private ComboBox<String> comboThemes;
 
+    private final MainLayoutController mainLayoutController;
+
     @Value("${eval.document.model-path:model/eval_model.onnx}")
     private String modelPath;
+
+    public SettingsViewController(@org.springframework.context.annotation.Lazy MainLayoutController mainLayoutController) {
+        this.mainLayoutController = mainLayoutController;
+    }
+
+    @FXML
+    public void onBack() {
+        if (mainLayoutController != null) {
+            mainLayoutController.navigateBack();
+        }
+    }
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {

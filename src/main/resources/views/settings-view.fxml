@@ -9,10 +9,13 @@
       spacing="16" VBox.vgrow="ALWAYS" style="-fx-padding: 24 32 32 32;">
 
     <!-- En-tête -->
-    <VBox spacing="2" styleClass="view-header">
-        <Label text="Paramètres &amp; Environnement" styleClass="view-title"/>
-        <Label text="État des moteurs d'analyse, de la base de données locale et personnalisation" style="-fx-text-fill: -color-fg-muted;"/>
-    </VBox>
+    <HBox alignment="CENTER_LEFT" spacing="12" styleClass="view-header">
+        <Button text="← Retour" styleClass="back-link" onAction="#onBack"/>
+        <VBox spacing="2">
+            <Label text="Paramètres &amp; Environnement" styleClass="view-title"/>
+            <Label text="État des moteurs d'analyse, de la base de données locale et personnalisation" style="-fx-text-fill: -color-fg-muted;"/>
+        </VBox>
+    </HBox>
 
     <GridPane hgap="16" vgap="16">
         <!-- Carte Base de données H2 -->

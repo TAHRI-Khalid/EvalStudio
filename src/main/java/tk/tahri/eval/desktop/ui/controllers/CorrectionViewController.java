@@ -524,11 +524,11 @@ public class CorrectionViewController implements Initializable {
         loadDashboard(eval.getId());
         if (mainLayoutController != null) {
             mainLayoutController.setActiveEvaluation(eval);
+            mainLayoutController.pushBackAction(this::returnToEvaluationsListDirectly);
         }
     }
 
-    @FXML
-    public void onBackToEvaluationsList() {
+    private void returnToEvaluationsListDirectly() {
         this.currentEvaluation = null;
         if (lblActiveEvalTitle != null) {
             lblActiveEvalTitle.setText("Tableau de bord de l'évaluation");
@@ -539,6 +539,15 @@ public class CorrectionViewController implements Initializable {
         }
         clearDashboard();
         showSelectionView();
+    }
+
+    @FXML
+    public void onBackToEvaluationsList() {
+        if (mainLayoutController != null) {
+            mainLayoutController.navigateBack();
+        } else {
+            returnToEvaluationsListDirectly();
+        }
     }
 
     public void showSelectionView() {

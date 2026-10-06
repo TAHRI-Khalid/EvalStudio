@@ -13,6 +13,14 @@
     <!-- Header Supérieur avec Bannière du cours actif intégrée -->
     <top>
         <HBox alignment="CENTER_LEFT" spacing="12" styleClass="top-header">
+            <!-- Bouton Retour universel -->
+            <Button fx:id="btnNavBack" text="Retour" styleClass="card-action-btn" onAction="#navigateBack"
+                    visible="false" managed="false" style="-fx-font-weight: 600; -fx-padding: 6 12;">
+                <graphic>
+                    <FontIcon iconLiteral="fth-arrow-left" iconSize="13"/>
+                </graphic>
+            </Button>
+
             <!-- Bouton Catalogue Mes groupes -->
             <Button fx:id="btnAllCourses" text="Mes groupes" styleClass="card-action-btn" onAction="#showGroupsView"
                     style="-fx-font-weight: 600; -fx-padding: 6 12;">

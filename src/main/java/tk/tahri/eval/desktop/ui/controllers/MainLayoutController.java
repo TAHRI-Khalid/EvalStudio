@@ -44,6 +44,7 @@ public class MainLayoutController implements Initializable, NotificationService.
 
     private static final Logger log = LoggerFactory.getLogger(MainLayoutController.class);
 
+    @FXML private Button btnNavBack;
     @FXML private Button btnAllGroups;
     @FXML private Button btnAllCourses; // FXML compatibility
     @FXML private Separator headerSeparator;
@@ -64,6 +65,9 @@ public class MainLayoutController implements Initializable, NotificationService.
     @FXML private Button btnSettings;
     @FXML private StackPane contentArea;
     @FXML private Label statusLabel;
+
+    private final java.util.Deque<Runnable> navigationHistory = new java.util.ArrayDeque<>();
+    private boolean isNavigatingBack = false;
 
     private final ApplicationContext applicationContext;
     private final GroupService groupService;
@@ -109,9 +113,47 @@ public class MainLayoutController implements Initializable, NotificationService.
     }
 
     private void setupIcons() {
+        if (btnNavBack != null) btnNavBack.setGraphic(new FontIcon(Feather.ARROW_LEFT));
         Button btn = getGroupsButton();
         if (btn != null) btn.setGraphic(new FontIcon(Feather.GRID));
         if (btnSettings != null) btnSettings.setGraphic(new FontIcon(Feather.SETTINGS));
+    }
+
+    public void pushBackAction(Runnable backAction) {
+        if (isNavigatingBack || backAction == null) return;
+        navigationHistory.push(backAction);
+        updateNavBackButtonState();
+    }
+
+    public void clearNavigationHistory() {
+        navigationHistory.clear();
+        updateNavBackButtonState();
+    }
+
+    private void updateNavBackButtonState() {
+        boolean canGoBack = !navigationHistory.isEmpty();
+        if (btnNavBack != null) {
+            btnNavBack.setVisible(canGoBack);
+            btnNavBack.setManaged(canGoBack);
+        }
+    }
+
+    @FXML
+    public void navigateBack() {
+        if (navigationHistory.isEmpty()) {
+            handleEscapeFallback();
+            return;
+        }
+        isNavigatingBack = true;
+        try {
+            Runnable action = navigationHistory.pop();
+            updateNavBackButtonState();
+            if (action != null) {
+                action.run();
+            }
+        } finally {
+            isNavigatingBack = false;
+        }
     }
 
     public void setBannerVisible(boolean visible) {
@@ -287,6 +329,7 @@ public class MainLayoutController implements Initializable, NotificationService.
 
     @FXML
     public void showGroupsView() {
+        clearNavigationHistory();
         setActiveButton(getGroupsButton());
         clearActiveEvaluation();
         setBannerVisible(false);
@@ -313,6 +356,7 @@ public class MainLayoutController implements Initializable, NotificationService.
     }
 
     public void showWorkspace(Group group, int tabIndex) {
+        pushBackAction(this::showGroupsView);
         setActiveButton(null);
         setBannerVisible(true);
         GroupWorkspaceViewController c = getOrCreateWorkspace();
@@ -383,6 +427,19 @@ public class MainLayoutController implements Initializable, NotificationService.
 
     @FXML
     public void showSettingsView() {
+        Group previousGroup = activeGroup;
+        Evaluation previousEval = activeEvaluation;
+        pushBackAction(() -> {
+            if (previousGroup != null) {
+                setActiveGroup(previousGroup, false);
+                if (previousEval != null) {
+                    setActiveEvaluation(previousEval);
+                }
+                showWorkspace(previousGroup, 0);
+            } else {
+                showGroupsView();
+            }
+        });
         setActiveButton(btnSettings);
         clearActiveEvaluation();
         setBannerVisible(false);
@@ -390,6 +447,14 @@ public class MainLayoutController implements Initializable, NotificationService.
     }
 
     public void openEvaluationBuilder(String evaluationId) {
+        Group currentGrp = activeGroup;
+        pushBackAction(() -> {
+            if (currentGrp != null) {
+                showEvaluationsForGroup(currentGrp.getId());
+            } else {
+                showGroupsView();
+            }
+        });
         setActiveButton(null);
         setBannerVisible(true);
         try {
@@ -405,13 +470,25 @@ public class MainLayoutController implements Initializable, NotificationService.
     }
 
     public void openPdfViewer(File pdfFile, String title, Runnable backAction) {
+        Runnable safeBack = () -> {
+            try {
+                if (applicationContext != null) {
+                    PdfViewerController pvc = applicationContext.getBean(PdfViewerController.class);
+                    pvc.closeCurrentDocument();
+                }
+            } catch (Exception ignored) {}
+            if (backAction != null) {
+                backAction.run();
+            }
+        };
+        pushBackAction(safeBack);
         setBannerVisible(true);
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/views/pdf-viewer-view.fxml"));
             loader.setControllerFactory(applicationContext::getBean);
             Node view = loader.load();
             PdfViewerController controller = loader.getController();
-            controller.loadFile(pdfFile, title, backAction);
+            controller.loadFile(pdfFile, title, safeBack);
             contentArea.getChildren().setAll(view);
         } catch (IOException e) {
             log.error("Échec de l'ouverture du visualiseur PDF", e);
@@ -469,7 +546,8 @@ public class MainLayoutController implements Initializable, NotificationService.
     private void setupKeyboardShortcuts(Scene scene) {
         scene.getAccelerators().put(new KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_DOWN), this::focusSearchField);
         scene.getAccelerators().put(new KeyCodeCombination(KeyCode.S, KeyCombination.CONTROL_DOWN), this::triggerSaveIfBuilder);
-        scene.getAccelerators().put(new KeyCodeCombination(KeyCode.ESCAPE), this::handleEscape);
+        scene.getAccelerators().put(new KeyCodeCombination(KeyCode.ESCAPE), this::navigateBack);
+        scene.getAccelerators().put(new KeyCodeCombination(KeyCode.LEFT, KeyCombination.ALT_DOWN), this::navigateBack);
     }
 
     private void focusSearchField() {
@@ -505,7 +583,7 @@ public class MainLayoutController implements Initializable, NotificationService.
         }
     }
 
-    private void handleEscape() {
+    private void handleEscapeFallback() {
         if (activeEvaluation != null && activeGroup != null) {
             showWorkspace(activeGroup, 1);
         } else if (activeGroup != null) {

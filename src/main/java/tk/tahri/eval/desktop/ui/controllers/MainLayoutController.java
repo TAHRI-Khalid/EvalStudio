@@ -769,7 +769,8 @@ public class MainLayoutController implements Initializable, NotificationService.
         }
     }
 
-    private void focusSearchField() {
+    @FXML
+    public void focusSearchField() {
         if (contentArea == null) return;
         TextField search = findSearchField(contentArea);
         if (search != null) {

@@ -3,7 +3,6 @@ package tk.tahri.eval.desktop.ui.controllers;
 import javafx.animation.FadeTransition;
 import javafx.animation.PauseTransition;
 import javafx.animation.SequentialTransition;
-import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
@@ -22,7 +21,6 @@ import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 import org.kordamp.ikonli.feather.Feather;
 import org.kordamp.ikonli.javafx.FontIcon;
@@ -67,25 +65,6 @@ public class MainLayoutController implements Initializable, NotificationService.
     @FXML private Button btnSettings;
     @FXML private StackPane contentArea;
     @FXML private Label statusLabel;
-
-    // FXML Éléments du Ruban Office
-    @FXML private VBox ribbonContainer;
-    @FXML private HBox ribbonToolbar;
-    @FXML private Button tabRibbonHome;
-    @FXML private Button tabRibbonStudents;
-    @FXML private Button tabRibbonEvals;
-    @FXML private Button tabRibbonCorrection;
-    @FXML private Button tabRibbonSettings;
-    @FXML private Button btnToggleRibbon;
-    @FXML private FontIcon iconToggleRibbon;
-
-    @FXML private HBox ribbonPanelHome;
-    @FXML private HBox ribbonPanelStudents;
-    @FXML private HBox ribbonPanelEvals;
-    @FXML private HBox ribbonPanelCorrection;
-    @FXML private HBox ribbonPanelSettings;
-
-    private boolean isRibbonCollapsed = false;
 
     private final java.util.Deque<Runnable> navigationHistory = new java.util.ArrayDeque<>();
     private boolean isNavigatingBack = false;
@@ -443,191 +422,7 @@ public class MainLayoutController implements Initializable, NotificationService.
     }
 
     public void syncTopNavForTab(int tabIndex) {
-        switch (tabIndex) {
-            case 0 -> onSelectRibbonStudents();
-            case 1 -> onSelectRibbonEvals();
-            case 2 -> onSelectRibbonCorrection();
-            default -> onSelectRibbonHome();
-        }
-    }
-
-    // ==========================================
-    // MÉTHODES DU RUBAN OFFICE
-    // ==========================================
-
-    @FXML
-    public void onSelectRibbonHome() {
-        setRibbonActiveTab(tabRibbonHome, ribbonPanelHome);
-    }
-
-    @FXML
-    public void onSelectRibbonStudents() {
-        setRibbonActiveTab(tabRibbonStudents, ribbonPanelStudents);
-        if (activeGroup != null && (workspaceController == null || workspaceController.getCurrentTabIndex() != 0)) {
-            showWorkspace(activeGroup, 0);
-        }
-    }
-
-    @FXML
-    public void onSelectRibbonEvals() {
-        setRibbonActiveTab(tabRibbonEvals, ribbonPanelEvals);
-        if (activeGroup != null && (workspaceController == null || workspaceController.getCurrentTabIndex() != 1)) {
-            showWorkspace(activeGroup, 1);
-        }
-    }
-
-    @FXML
-    public void onSelectRibbonCorrection() {
-        setRibbonActiveTab(tabRibbonCorrection, ribbonPanelCorrection);
-        if (activeGroup != null && (workspaceController == null || workspaceController.getCurrentTabIndex() != 2)) {
-            showWorkspace(activeGroup, 2);
-        }
-    }
-
-    @FXML
-    public void onSelectRibbonSettings() {
-        setRibbonActiveTab(tabRibbonSettings, ribbonPanelSettings);
-        showSettingsView();
-    }
-
-    private void setRibbonActiveTab(Button activeTab, HBox activePanel) {
-        Button[] tabs = {tabRibbonHome, tabRibbonStudents, tabRibbonEvals, tabRibbonCorrection, tabRibbonSettings};
-        for (Button t : tabs) {
-            if (t != null) {
-                if (t == activeTab) {
-                    if (!t.getStyleClass().contains("active")) t.getStyleClass().add("active");
-                } else {
-                    t.getStyleClass().remove("active");
-                }
-            }
-        }
-
-        HBox[] panels = {ribbonPanelHome, ribbonPanelStudents, ribbonPanelEvals, ribbonPanelCorrection, ribbonPanelSettings};
-        for (HBox p : panels) {
-            if (p != null) {
-                boolean show = (p == activePanel);
-                p.setVisible(show);
-                p.setManaged(show);
-            }
-        }
-
-        // Si le ruban était réduit, le déplier lors d'un clic d'onglet
-        if (isRibbonCollapsed) {
-            toggleRibbonCollapse();
-        }
-    }
-
-    @FXML
-    public void toggleRibbonCollapse() {
-        isRibbonCollapsed = !isRibbonCollapsed;
-        if (ribbonToolbar != null) {
-            ribbonToolbar.setVisible(!isRibbonCollapsed);
-            ribbonToolbar.setManaged(!isRibbonCollapsed);
-        }
-        if (iconToggleRibbon != null) {
-            iconToggleRibbon.setIconLiteral(isRibbonCollapsed ? "fth-chevron-down" : "fth-chevron-up");
-        }
-    }
-
-    // Actions rapides déclenchées depuis le ruban
-    @FXML
-    public void triggerRibbonNewGroup() {
-        showGroupsView();
-        Platform.runLater(() -> {
-            Button btn = findButtonByText(contentArea, "Nouveau groupe");
-            if (btn != null) btn.fire();
-        });
-    }
-
-    @FXML
-    public void triggerRibbonNewStudent() {
-        if (activeGroup == null) {
-            notificationService.showWarning("Groupe requis", "Veuillez d'abord sélectionner un groupe.");
-            return;
-        }
-        showWorkspace(activeGroup, 0);
-        Platform.runLater(() -> {
-            if (workspaceController != null && workspaceController.getStudentsController() != null) {
-                workspaceController.getStudentsController().onNewStudent();
-            }
-        });
-    }
-
-    @FXML
-    public void triggerRibbonImportExcel() {
-        if (activeGroup == null) {
-            notificationService.showWarning("Groupe requis", "Veuillez d'abord sélectionner un groupe.");
-            return;
-        }
-        showWorkspace(activeGroup, 0);
-        Platform.runLater(() -> {
-            if (workspaceController != null && workspaceController.getStudentsController() != null) {
-                workspaceController.getStudentsController().onImportExcel();
-            }
-        });
-    }
-
-    @FXML
-    public void triggerRibbonExportStudentsExcel() {
-        if (activeGroup == null) {
-            notificationService.showWarning("Groupe requis", "Veuillez d'abord sélectionner un groupe.");
-            return;
-        }
-        showWorkspace(activeGroup, 0);
-        Platform.runLater(() -> {
-            if (workspaceController != null && workspaceController.getStudentsController() != null) {
-                workspaceController.getStudentsController().onExportExcel();
-            }
-        });
-    }
-
-    @FXML
-    public void triggerRibbonNewEval() {
-        if (activeGroup == null) {
-            notificationService.showWarning("Groupe requis", "Veuillez d'abord sélectionner un groupe.");
-            return;
-        }
-        showWorkspace(activeGroup, 1);
-        Platform.runLater(() -> {
-            if (workspaceController != null && workspaceController.getEvaluationsController() != null) {
-                workspaceController.getEvaluationsController().onNewEvaluation();
-            }
-        });
-    }
-
-    @FXML
-    public void triggerRibbonScan() {
-        if (activeGroup == null) {
-            notificationService.showWarning("Groupe requis", "Veuillez d'abord sélectionner un groupe.");
-            return;
-        }
-        showWorkspace(activeGroup, 2);
-        Platform.runLater(() -> {
-            if (workspaceController != null && workspaceController.getCorrectionController() != null) {
-                workspaceController.getCorrectionController().onStartCorrection();
-            }
-        });
-    }
-
-    @FXML
-    public void triggerRibbonOpenGeneratedPdf() {
-        if (workspaceController != null && workspaceController.getCorrectionController() != null) {
-            workspaceController.getCorrectionController().onOpenGeneratedPdf();
-        }
-    }
-
-    @FXML
-    public void triggerRibbonExportGradesExcel() {
-        if (workspaceController != null && workspaceController.getCorrectionController() != null) {
-            workspaceController.getCorrectionController().onExportExcel();
-        }
-    }
-
-    @FXML
-    public void triggerRibbonExportPdfReport() {
-        if (workspaceController != null && workspaceController.getCorrectionController() != null) {
-            workspaceController.getCorrectionController().onExportPdfReport();
-        }
+        // Le header affiche la bannière du groupe actif au lieu des boutons de navigation
     }
 
     @FXML
@@ -769,8 +564,7 @@ public class MainLayoutController implements Initializable, NotificationService.
         }
     }
 
-    @FXML
-    public void focusSearchField() {
+    private void focusSearchField() {
         if (contentArea == null) return;
         TextField search = findSearchField(contentArea);
         if (search != null) {

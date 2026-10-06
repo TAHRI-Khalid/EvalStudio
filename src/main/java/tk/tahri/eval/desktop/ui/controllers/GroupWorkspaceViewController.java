@@ -159,8 +159,4 @@ public class GroupWorkspaceViewController implements Initializable {
 
     public void selectCourseAndTab(Group course, int tabIndex) { selectGroupAndTab(course, tabIndex); }
     public void selectCourseAndEvaluation(Group course, String evalId) { selectGroupAndEvaluation(course, evalId); }
-
-    public StudentsViewController getStudentsController() { return studentsController; }
-    public EvaluationsViewController getEvaluationsController() { return evaluationsController; }
-    public CorrectionViewController getCorrectionController() { return correctionController; }
 }

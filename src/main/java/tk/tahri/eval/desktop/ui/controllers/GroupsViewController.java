@@ -7,6 +7,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.geometry.Side;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -219,18 +220,21 @@ public class GroupsViewController implements Initializable {
         footer.getStyleClass().addAll("group-footer", "course-footer");
         footer.setAlignment(Pos.CENTER_LEFT);
 
-        Button btnStudents = new Button("Étudiants");
+        Button btnStudents = new Button();
         btnStudents.getStyleClass().add("card-action-btn");
         btnStudents.setGraphic(new FontIcon(Feather.USERS));
+        btnStudents.setTooltip(new Tooltip("Étudiants"));
         btnStudents.setOnAction(e -> {
             e.consume();
             mainLayoutController.showStudentsForGroup(group.getId());
         });
 
-        Button btnEvals = new Button("Évaluations");
+        Button btnEvals = new Button();
         btnEvals.getStyleClass().add("card-action-btn");
-        btnEvals.setStyle("-fx-text-fill: #004faa; -fx-font-weight: bold;");
-        btnEvals.setGraphic(new FontIcon(Feather.FILE_TEXT));
+        FontIcon evalsIcon = new FontIcon(Feather.FILE_TEXT);
+        evalsIcon.setIconColor(javafx.scene.paint.Color.web("#004faa"));
+        btnEvals.setGraphic(evalsIcon);
+        btnEvals.setTooltip(new Tooltip("Évaluations"));
         btnEvals.setOnAction(e -> {
             e.consume();
             mainLayoutController.showEvaluationsForGroup(group.getId());
@@ -239,22 +243,25 @@ public class GroupsViewController implements Initializable {
         Pane spacer = new Pane();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Button btnEdit = new Button();
-        btnEdit.getStyleClass().add("card-action-btn");
-        btnEdit.setGraphic(new FontIcon(Feather.EDIT_2));
-        btnEdit.setTooltip(new Tooltip("Modifier le groupe"));
-        btnEdit.setOnAction(e -> {
+        Button btnMenu = new Button();
+        btnMenu.getStyleClass().add("card-action-btn");
+        btnMenu.setGraphic(new FontIcon(Feather.MORE_VERTICAL));
+        btnMenu.setTooltip(new Tooltip("Options du groupe"));
+
+        ContextMenu contextMenu = new ContextMenu();
+
+        MenuItem itemEdit = new MenuItem("Modifier le groupe");
+        itemEdit.setGraphic(new FontIcon(Feather.EDIT_2));
+        itemEdit.setOnAction(e -> {
             e.consume();
             showGroupDialog(group);
         });
 
-        Button btnDelete = new Button();
-        btnDelete.getStyleClass().add("card-action-btn");
+        MenuItem itemDelete = new MenuItem("Supprimer le groupe");
         FontIcon trashIcon = new FontIcon(Feather.TRASH_2);
         trashIcon.setIconColor(javafx.scene.paint.Color.web("#ba1a1a"));
-        btnDelete.setGraphic(trashIcon);
-        btnDelete.setTooltip(new Tooltip("Supprimer le groupe"));
-        btnDelete.setOnAction(e -> {
+        itemDelete.setGraphic(trashIcon);
+        itemDelete.setOnAction(e -> {
             e.consume();
             if (notificationService.confirm("Suppression", "Supprimer le groupe",
                     "Êtes-vous sûr de vouloir supprimer « " + group.getName() + " » et toutes ses inscriptions ?")) {
@@ -263,7 +270,18 @@ public class GroupsViewController implements Initializable {
             }
         });
 
-        footer.getChildren().addAll(btnStudents, btnEvals, spacer, btnEdit, btnDelete);
+        contextMenu.getItems().addAll(itemEdit, itemDelete);
+
+        btnMenu.setOnAction(e -> {
+            e.consume();
+            if (contextMenu.isShowing()) {
+                contextMenu.hide();
+            } else {
+                contextMenu.show(btnMenu, Side.BOTTOM, 0, 0);
+            }
+        });
+
+        footer.getChildren().addAll(btnStudents, btnEvals, spacer, btnMenu);
 
         card.getChildren().addAll(banner, avatarContainer, body, footer);
 

@@ -36,12 +36,6 @@ public class EvaluationsViewController implements Initializable {
     private static final Logger log = LoggerFactory.getLogger(EvaluationsViewController.class);
 
     @FXML private Button btnNewEval;
-    @FXML private Button btnGeneratePdf;
-    @FXML private Button btnOpenPdf;
-    @FXML private Button btnGoToCorrection;
-
-    @FXML private ProgressBar progressBar;
-    @FXML private Label lblProgress;
 
     @FXML private TableView<Evaluation> evalTable;
     @FXML private TableColumn<Evaluation, String> colDesignation;
@@ -251,23 +245,15 @@ public class EvaluationsViewController implements Initializable {
 
     private void setupIcons() {
         if (btnNewEval != null) btnNewEval.setGraphic(new FontIcon(Feather.PLUS));
-        if (btnGeneratePdf != null) btnGeneratePdf.setGraphic(new FontIcon(Feather.FILE_TEXT));
-        if (btnOpenPdf != null) btnOpenPdf.setGraphic(new FontIcon(Feather.EXTERNAL_LINK));
-        if (btnGoToCorrection != null) btnGoToCorrection.setGraphic(new FontIcon(Feather.CHECK_CIRCLE));
     }
 
     private void setupListeners() {
         evalTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-            boolean hasSelection = newVal != null;
-            btnGeneratePdf.setDisable(!hasSelection);
-            if (hasSelection) {
-                File pdf = documentService.getGeneratedPdfFile(newVal.getId());
-                btnOpenPdf.setDisable(pdf == null || !pdf.exists());
+            if (newVal != null) {
                 if (mainLayoutController != null) {
                     mainLayoutController.setActiveEvaluation(newVal);
                 }
             } else {
-                btnOpenPdf.setDisable(true);
                 if (mainLayoutController != null) {
                     mainLayoutController.clearActiveEvaluation();
                 }
@@ -283,9 +269,6 @@ public class EvaluationsViewController implements Initializable {
         this.currentGroup = group;
         if (mainLayoutController != null) {
             mainLayoutController.clearActiveEvaluation();
-        }
-        if (btnGoToCorrection != null) {
-            btnGoToCorrection.setDisable(group == null);
         }
         if (group != null) {
             loadEvaluations(group.getId());
@@ -316,15 +299,6 @@ public class EvaluationsViewController implements Initializable {
 
     public void selectCourse(String courseId) {
         selectGroup(courseId);
-    }
-
-    @FXML
-    public void onGoToCorrection() {
-        if (currentGroup != null) {
-            Evaluation eval = evalTable.getSelectionModel().getSelectedItem();
-            String evalId = eval != null ? eval.getId() : null;
-            mainLayoutController.showCorrectionForEvaluation(currentGroup.getId(), evalId);
-        }
     }
 
     public void loadEvaluations(String groupId) {
@@ -385,73 +359,6 @@ public class EvaluationsViewController implements Initializable {
             loadEvaluations(currentGroup.getId());
             mainLayoutController.openEvaluationBuilder(created.getId());
         });
-    }
-
-    @FXML
-    public void onGeneratePdf() {
-        Evaluation selected = evalTable.getSelectionModel().getSelectedItem();
-        if (selected == null || currentGroup == null) return;
-
-        if (selected.getQuestions() == null || selected.getQuestions().isEmpty()) {
-            notificationService.showWarning("Questions manquantes", "Ajoutez au moins une question avant de générer le sujet.");
-            return;
-        }
-
-        btnGeneratePdf.setDisable(true);
-        progressBar.setVisible(true);
-        lblProgress.setVisible(true);
-        lblProgress.setText("Génération des copies avec codes-barres personnalisés...");
-
-        Task<Void> task = new Task<>() {
-            @Override
-            protected Void call() throws Exception {
-                documentService.generateEvaluation(currentGroup.getId(), selected.getId(),
-                        progress -> Platform.runLater(() -> progressBar.setProgress(progress)));
-                return null;
-            }
-        };
-
-        task.setOnSucceeded(e -> {
-            btnGeneratePdf.setDisable(false);
-            progressBar.setVisible(false);
-            lblProgress.setVisible(false);
-            notificationService.showInfo("Génération terminée", "Le sujet PDF avec code-barres PDF417 a été généré avec succès !\nL'épreuve est maintenant prête pour impression et accessible dans l'onglet « Correction & Scanner ».");
-            File pdf = documentService.getGeneratedPdfFile(selected.getId());
-            if (currentGroup != null) {
-                loadEvaluations(currentGroup.getId());
-            }
-            if (pdf != null && pdf.exists()) {
-                String groupId = currentGroup != null ? currentGroup.getId() : selected.groupId();
-                mainLayoutController.openPdfViewer(pdf, "Sujet : " + selected.getDesignation(),
-                        () -> mainLayoutController.showEvaluationsForGroup(groupId));
-            }
-        });
-
-        task.setOnFailed(e -> {
-            btnGeneratePdf.setDisable(false);
-            progressBar.setVisible(false);
-            lblProgress.setVisible(false);
-            Throwable ex = task.getException();
-            log.error("Échec de la génération PDF", ex);
-            notificationService.showError("Erreur de génération", ex.getMessage());
-        });
-
-        Thread.startVirtualThread(task);
-    }
-
-    @FXML
-    public void onOpenPdf() {
-        Evaluation selected = evalTable.getSelectionModel().getSelectedItem();
-        if (selected == null) return;
-
-        File pdf = documentService.getGeneratedPdfFile(selected.getId());
-        if (pdf != null && pdf.exists()) {
-            String groupId = currentGroup != null ? currentGroup.getId() : selected.groupId();
-            mainLayoutController.openPdfViewer(pdf, "Sujet : " + selected.getDesignation(),
-                    () -> mainLayoutController.showEvaluationsForGroup(groupId));
-        } else {
-            notificationService.showWarning("Fichier introuvable", "Le PDF n'a pas encore été généré.");
-        }
     }
 
     public void deleteEvaluation(Evaluation selected) {

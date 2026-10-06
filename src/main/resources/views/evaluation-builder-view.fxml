@@ -17,8 +17,15 @@
         </VBox>
         <Button fx:id="btnAddQuestion" text="Ajouter une question" onAction="#onAddQuestion"/>
         <Button fx:id="btnPreviewDraft" text="Aperçu Brouillon PDF" onAction="#onPreviewDraft"/>
-        <Button fx:id="btnSave" text="Enregistrer" styleClass="btn-primary" onAction="#onSave"/>
+        <Button fx:id="btnSave" text="Enregistrer" onAction="#onSave"/>
+        <Button fx:id="btnGeneratePdf" text="Générer les copies PDF" styleClass="btn-primary" onAction="#onGeneratePdf"/>
     </HBox>
+
+    <!-- Indicateur de progression génération PDF -->
+    <VBox fx:id="progressBox" spacing="4" visible="false" managed="false">
+        <ProgressBar fx:id="progressBar" maxWidth="Infinity" progress="0.0"/>
+        <Label fx:id="lblProgress" text="Génération des copies avec codes-barres personnalisés..." style="-fx-font-size: 11px; -fx-text-fill: #424753;"/>
+    </VBox>
 
     <!-- Bannière d'information si évaluation verrouillée -->
     <HBox fx:id="lockedBanner" alignment="CENTER_LEFT" spacing="10" visible="false" managed="false"

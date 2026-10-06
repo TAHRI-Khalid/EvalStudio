@@ -8,9 +8,11 @@ import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.TransferMode;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import org.kordamp.ikonli.feather.Feather;
@@ -45,6 +47,7 @@ public class CorrectionViewController implements Initializable {
     // 1. Vue Sélection de l'évaluation
     @FXML private VBox evalSelectionView;
     @FXML private Label lblEvalCount;
+    @FXML private Button btnOpenPdfFromList;
     @FXML private TableView<Evaluation> evaluationsTable;
     @FXML private TableColumn<Evaluation, String> colEvalDesignation;
     @FXML private TableColumn<Evaluation, String> colEvalType;
@@ -58,7 +61,7 @@ public class CorrectionViewController implements Initializable {
     @FXML private Button btnBackToEvalsList;
     @FXML private Label lblActiveEvalTitle;
     @FXML private Label lblActiveEvalState;
-    @FXML private ComboBox<Evaluation> comboEvaluations;
+    @FXML private Button btnOpenPdfFromDashboard;
 
     @FXML private VBox dropZone;
     @FXML private Label lblDropZone;
@@ -95,6 +98,7 @@ public class CorrectionViewController implements Initializable {
     private final MainLayoutController mainLayoutController;
 
     private Group currentGroup;
+    private Evaluation currentEvaluation;
     private File selectedScanFile;
     private final ObservableList<Evaluation> printedEvaluationsList = FXCollections.observableArrayList();
     private final ObservableList<StudentGrade> studentGradesList = FXCollections.observableArrayList();
@@ -216,13 +220,29 @@ public class CorrectionViewController implements Initializable {
         });
 
         colEvalAction.setCellFactory(col -> new TableCell<>() {
+            private final Button btnPdf = new Button();
             private final Button btnOpen = new Button("Ouvrir");
+            private final HBox pane = new HBox(6, btnPdf, btnOpen);
 
             {
+                pane.setAlignment(Pos.CENTER);
+
+                btnPdf.getStyleClass().add("card-action-btn");
+                btnPdf.setGraphic(new FontIcon(Feather.FILE_TEXT));
+                btnPdf.setTooltip(new Tooltip("Voir le PDF généré"));
+                btnPdf.setOnAction(e -> {
+                    e.consume();
+                    Evaluation eval = getTableView().getItems().get(getIndex());
+                    if (eval != null) {
+                        openPdfForEvaluation(eval);
+                    }
+                });
+
                 btnOpen.getStyleClass().add("card-action-btn");
                 btnOpen.setStyle("-fx-text-fill: #004faa; -fx-font-weight: bold;");
                 btnOpen.setGraphic(new FontIcon(Feather.ARROW_RIGHT));
                 btnOpen.setOnAction(e -> {
+                    e.consume();
                     Evaluation eval = getTableView().getItems().get(getIndex());
                     if (eval != null) {
                         openEvaluationDashboard(eval);
@@ -236,7 +256,7 @@ public class CorrectionViewController implements Initializable {
                 if (empty) {
                     setGraphic(null);
                 } else {
-                    setGraphic(btnOpen);
+                    setGraphic(pane);
                 }
             }
         });
@@ -328,6 +348,8 @@ public class CorrectionViewController implements Initializable {
 
     private void setupIcons() {
         if (btnBackToEvalsList != null) btnBackToEvalsList.setGraphic(new FontIcon(Feather.ARROW_LEFT));
+        if (btnOpenPdfFromList != null) btnOpenPdfFromList.setGraphic(new FontIcon(Feather.FILE_TEXT));
+        if (btnOpenPdfFromDashboard != null) btnOpenPdfFromDashboard.setGraphic(new FontIcon(Feather.FILE_TEXT));
         if (btnBrowseFile != null) btnBrowseFile.setGraphic(new FontIcon(Feather.FOLDER));
         if (btnStartCorrection != null) btnStartCorrection.setGraphic(new FontIcon(Feather.PLAY));
         if (btnViewStudentCopy != null) btnViewStudentCopy.setGraphic(new FontIcon(Feather.EYE));
@@ -363,25 +385,9 @@ public class CorrectionViewController implements Initializable {
     }
 
     private void setupListeners() {
-        comboEvaluations.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-            if (newVal != null) {
-                if (lblActiveEvalTitle != null) {
-                    lblActiveEvalTitle.setText(newVal.getDesignation());
-                }
-                updateActiveEvalStateBadge(newVal.getState());
-                if (mainLayoutController != null) {
-                    mainLayoutController.setActiveEvaluation(newVal);
-                }
-                loadDashboard(newVal.getId());
-            } else {
-                if (lblActiveEvalTitle != null) {
-                    lblActiveEvalTitle.setText("Tableau de bord de l'évaluation");
-                }
-                updateActiveEvalStateBadge(null);
-                if (mainLayoutController != null) {
-                    mainLayoutController.clearActiveEvaluation();
-                }
-                clearDashboard();
+        evaluationsTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
+            if (btnOpenPdfFromList != null) {
+                btnOpenPdfFromList.setDisable(n == null);
             }
         });
 
@@ -397,6 +403,7 @@ public class CorrectionViewController implements Initializable {
 
     public void openEvaluationDashboard(Evaluation eval) {
         if (eval == null) return;
+        this.currentEvaluation = eval;
         showDashboardView();
 
         if (lblActiveEvalTitle != null) {
@@ -404,18 +411,23 @@ public class CorrectionViewController implements Initializable {
         }
         updateActiveEvalStateBadge(eval.getState());
 
-        if (comboEvaluations.getSelectionModel().getSelectedItem() == eval) {
-            loadDashboard(eval.getId());
-            if (mainLayoutController != null) {
-                mainLayoutController.setActiveEvaluation(eval);
-            }
-        } else {
-            comboEvaluations.getSelectionModel().select(eval);
+        loadDashboard(eval.getId());
+        if (mainLayoutController != null) {
+            mainLayoutController.setActiveEvaluation(eval);
         }
     }
 
     @FXML
     public void onBackToEvaluationsList() {
+        this.currentEvaluation = null;
+        if (lblActiveEvalTitle != null) {
+            lblActiveEvalTitle.setText("Tableau de bord de l'évaluation");
+        }
+        updateActiveEvalStateBadge(null);
+        if (mainLayoutController != null) {
+            mainLayoutController.clearActiveEvaluation();
+        }
+        clearDashboard();
         showSelectionView();
     }
 
@@ -471,16 +483,19 @@ public class CorrectionViewController implements Initializable {
     }
 
     public Evaluation getSelectedEvaluation() {
-        return comboEvaluations != null ? comboEvaluations.getSelectionModel().getSelectedItem() : null;
+        return currentEvaluation;
     }
 
     public void setGroup(Group group) {
         this.currentGroup = group;
+        if (btnOpenPdfFromList != null) {
+            btnOpenPdfFromList.setDisable(true);
+        }
         if (group != null) {
             loadEvaluationsForGroup(group.getId());
         } else {
             printedEvaluationsList.clear();
-            comboEvaluations.getItems().clear();
+            this.currentEvaluation = null;
             clearDashboard();
             if (lblEvalCount != null) {
                 lblEvalCount.setText("0 épreuve(s) prête(s)");
@@ -508,9 +523,12 @@ public class CorrectionViewController implements Initializable {
     public void selectCourse(String courseId) { selectGroup(courseId); }
 
     public void loadEvaluationsForGroup(String groupId) {
+        if (btnOpenPdfFromList != null) {
+            btnOpenPdfFromList.setDisable(true);
+        }
         if (groupId == null) {
             printedEvaluationsList.clear();
-            comboEvaluations.getItems().clear();
+            this.currentEvaluation = null;
             clearDashboard();
             if (lblEvalCount != null) {
                 lblEvalCount.setText("0 épreuve(s) prête(s)");
@@ -523,7 +541,6 @@ public class CorrectionViewController implements Initializable {
                 .toList();
 
         printedEvaluationsList.setAll(readyEvals);
-        comboEvaluations.setItems(FXCollections.observableArrayList(readyEvals));
         if (lblEvalCount != null) {
             lblEvalCount.setText(readyEvals.size() + " épreuve(s) prête(s)");
         }
@@ -550,9 +567,9 @@ public class CorrectionViewController implements Initializable {
 
     @FXML
     public void onStartCorrection() {
-        Evaluation eval = comboEvaluations.getSelectionModel().getSelectedItem();
+        Evaluation eval = currentEvaluation;
         if (eval == null) {
-            notificationService.showWarning("Évaluation requise", "Veuillez sélectionner une évaluation dans le menu déroulant.");
+            notificationService.showWarning("Évaluation requise", "Veuillez sélectionner une évaluation.");
             return;
         }
         if (selectedScanFile == null || !selectedScanFile.exists()) {
@@ -666,7 +683,7 @@ public class CorrectionViewController implements Initializable {
     }
 
     private void viewIndividualCopy(StudentGrade grade) {
-        Evaluation eval = comboEvaluations.getSelectionModel().getSelectedItem();
+        Evaluation eval = currentEvaluation;
         if (eval == null || grade == null || grade.assessmentId() == null) return;
         if (currentGroup == null) return;
 
@@ -694,7 +711,7 @@ public class CorrectionViewController implements Initializable {
 
     @FXML
     public void onExportExcel() {
-        Evaluation eval = comboEvaluations.getSelectionModel().getSelectedItem();
+        Evaluation eval = currentEvaluation;
         if (eval == null) return;
         if (currentGroup == null) return;
 
@@ -717,7 +734,7 @@ public class CorrectionViewController implements Initializable {
 
     @FXML
     public void onExportPdfReport() {
-        Evaluation eval = comboEvaluations.getSelectionModel().getSelectedItem();
+        Evaluation eval = currentEvaluation;
         if (eval == null) return;
         if (currentGroup == null) return;
 
@@ -744,7 +761,7 @@ public class CorrectionViewController implements Initializable {
 
     @FXML
     public void onViewAnnotatedPdf() {
-        Evaluation eval = comboEvaluations.getSelectionModel().getSelectedItem();
+        Evaluation eval = currentEvaluation;
         if (eval == null) return;
         if (currentGroup == null) return;
 
@@ -768,6 +785,42 @@ public class CorrectionViewController implements Initializable {
                 Platform.runLater(() -> notificationService.showError("Erreur", "Aucune copie corrigée disponible pour l'instant."));
             }
         });
+    }
+
+    @FXML
+    public void onOpenGeneratedPdf() {
+        if (currentEvaluation != null) {
+            openPdfForEvaluation(currentEvaluation);
+        } else {
+            notificationService.showWarning("Sélection requise", "Veuillez d'abord sélectionner une évaluation.");
+        }
+    }
+
+    @FXML
+    public void onOpenPdfFromList() {
+        Evaluation selected = evaluationsTable.getSelectionModel().getSelectedItem();
+        if (selected != null) {
+            openPdfForEvaluation(selected);
+        } else {
+            notificationService.showWarning("Sélection requise", "Veuillez sélectionner une épreuve dans la liste.");
+        }
+    }
+
+    public void openPdfForEvaluation(Evaluation eval) {
+        if (eval == null) return;
+        File pdf = documentService.getGeneratedPdfFile(eval.getId());
+        if (pdf != null && pdf.exists()) {
+            String groupId = currentGroup != null ? currentGroup.getId() : eval.groupId();
+            mainLayoutController.openPdfViewer(pdf, "Sujet : " + eval.getDesignation(), () -> {
+                if (currentEvaluation != null && currentEvaluation.getId().equals(eval.getId())) {
+                    mainLayoutController.showCorrectionForEvaluation(groupId, eval.getId());
+                } else {
+                    mainLayoutController.showCorrectionForEvaluation(groupId, null);
+                }
+            });
+        } else {
+            notificationService.showWarning("Fichier introuvable", "Le sujet PDF n'a pas été trouvé pour cette évaluation.");
+        }
     }
 
     public void selectGroupAndEvaluation(String groupId, String evaluationId) {

@@ -73,7 +73,12 @@ public class EvaluationBuilderController implements Initializable {
     @FXML private Button btnAddQuestion;
     @FXML private Button btnSave;
     @FXML private Button btnPreviewDraft;
+    @FXML private Button btnGeneratePdf;
     @FXML private Button btnBack;
+
+    @FXML private VBox progressBox;
+    @FXML private ProgressBar progressBar;
+    @FXML private Label lblProgress;
 
     private final EvaluationService evaluationService;
     private final DocumentService documentService;
@@ -107,6 +112,7 @@ public class EvaluationBuilderController implements Initializable {
         if (btnAddQuestion != null) btnAddQuestion.setGraphic(new FontIcon(Feather.PLUS));
         if (btnSave != null) btnSave.setGraphic(new FontIcon(Feather.SAVE));
         if (btnPreviewDraft != null) btnPreviewDraft.setGraphic(new FontIcon(Feather.EYE));
+        if (btnGeneratePdf != null) btnGeneratePdf.setGraphic(new FontIcon(Feather.FILE_TEXT));
         if (btnBack != null) btnBack.setGraphic(new FontIcon(Feather.ARROW_LEFT));
     }
 
@@ -288,6 +294,11 @@ public class EvaluationBuilderController implements Initializable {
 
         if (btnAddQuestion != null) btnAddQuestion.setDisable(isLocked);
         if (btnSave != null) btnSave.setDisable(isLocked);
+        if (btnGeneratePdf != null) btnGeneratePdf.setDisable(isLocked);
+        if (progressBox != null) {
+            progressBox.setVisible(false);
+            progressBox.setManaged(false);
+        }
 
         questionsList.setAll(currentEvaluation.getQuestions());
     }
@@ -682,6 +693,76 @@ public class EvaluationBuilderController implements Initializable {
                 Platform.runLater(() -> notificationService.showError("Erreur de prévisualisation", e.getMessage()));
             }
         });
+    }
+
+    @FXML
+    public void onGeneratePdf() {
+        if (currentEvaluation == null) return;
+
+        if (currentEvaluation.getState() != EvaluationState.CONCEPTION) {
+            notificationService.showWarning("Déjà générée", "Cette évaluation a déjà été générée et se trouve en production.");
+            return;
+        }
+
+        saveEvaluationData();
+
+        if (questionsList.isEmpty()) {
+            notificationService.showWarning("Questions manquantes", "Ajoutez au moins une question avant de générer les copies PDF.");
+            return;
+        }
+
+        String groupId = currentEvaluation.getGroupId();
+        String evalId = currentEvaluation.getId();
+
+        if (groupId == null || groupId.isBlank()) {
+            notificationService.showWarning("Groupe manquant", "Aucun groupe n'est associé à cette évaluation.");
+            return;
+        }
+
+        if (btnGeneratePdf != null) btnGeneratePdf.setDisable(true);
+        if (progressBox != null) {
+            progressBox.setVisible(true);
+            progressBox.setManaged(true);
+        }
+        if (progressBar != null) progressBar.setProgress(0.0);
+        if (lblProgress != null) lblProgress.setText("Génération des copies avec codes-barres personnalisés...");
+
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                documentService.generateEvaluation(groupId, evalId,
+                        progress -> Platform.runLater(() -> {
+                            if (progressBar != null) progressBar.setProgress(progress);
+                        }));
+                return null;
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            if (btnGeneratePdf != null) btnGeneratePdf.setDisable(false);
+            if (progressBox != null) {
+                progressBox.setVisible(false);
+                progressBox.setManaged(false);
+            }
+            notificationService.showInfo("Génération terminée",
+                    "Le sujet PDF avec code-barres PDF417 a été généré avec succès !\nL'épreuve est passée en production.");
+            if (mainLayoutController != null) {
+                mainLayoutController.showCorrectionForEvaluation(groupId, evalId);
+            }
+        });
+
+        task.setOnFailed(e -> {
+            if (btnGeneratePdf != null) btnGeneratePdf.setDisable(false);
+            if (progressBox != null) {
+                progressBox.setVisible(false);
+                progressBox.setManaged(false);
+            }
+            Throwable ex = task.getException();
+            log.error("Échec de la génération des copies PDF", ex);
+            notificationService.showError("Erreur de génération", ex != null ? ex.getMessage() : "Une erreur est survenue lors de la génération.");
+        });
+
+        Thread.startVirtualThread(task);
     }
 
     @FXML

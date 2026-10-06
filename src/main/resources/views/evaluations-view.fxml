@@ -18,19 +18,6 @@
         <Button fx:id="btnNewEval" text="Nouvelle évaluation" styleClass="btn-primary" onAction="#onNewEvaluation"/>
     </HBox>
 
-    <!-- Barre d'outils d'actions sur l'évaluation sélectionnée -->
-    <HBox alignment="CENTER_LEFT" spacing="10">
-        <Button fx:id="btnGeneratePdf" text="Générer les copies PDF" disable="true" style="-fx-font-weight: bold;" onAction="#onGeneratePdf"/>
-        <Button fx:id="btnOpenPdf" text="Voir le PDF généré" disable="true" onAction="#onOpenPdf"/>
-        <Button fx:id="btnGoToCorrection" text="Correction &amp; Scanner" disable="true" style="-fx-text-fill: #004faa; -fx-font-weight: bold;" onAction="#onGoToCorrection"/>
-    </HBox>
-
-    <!-- Indicateur de progression PDF -->
-    <VBox spacing="4">
-        <ProgressBar fx:id="progressBar" maxWidth="Infinity" visible="false" progress="0.0"/>
-        <Label fx:id="lblProgress" text="" visible="false" style="-fx-font-size: 11px; -fx-text-fill: #424753;"/>
-    </VBox>
-
     <!-- Tableau des Évaluations prenant tout l'espace disponible -->
     <TableView fx:id="evalTable" VBox.vgrow="ALWAYS" maxHeight="Infinity" maxWidth="Infinity" minHeight="200" styleClass="table-view">
         <columns>

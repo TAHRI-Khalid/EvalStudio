@@ -62,6 +62,11 @@ if [ -f "src/main/resources/icons/app-icon.png" ]; then
     ICON_OPT=(--icon "src/main/resources/icons/app-icon.png")
 fi
 
+EXTRA_OPTS=()
+if [ "$PACKAGE_TYPE" != "app-image" ]; then
+    EXTRA_OPTS=(--linux-shortcut --linux-menu-group "Education;Office;")
+fi
+
 echo "=== [4/4] Création du binaire natif ($PACKAGE_TYPE) avec jpackage ==="
 
 "$JPACKAGE_CMD" \
@@ -75,6 +80,7 @@ echo "=== [4/4] Création du binaire natif ($PACKAGE_TYPE) avec jpackage ==="
     --dest "$DIST_DIR" \
     --type "$PACKAGE_TYPE" \
     "${ICON_OPT[@]}" \
+    "${EXTRA_OPTS[@]}" \
     --java-options "--enable-native-access=ALL-UNNAMED" \
     --java-options "-Dprism.verbose=false"
 

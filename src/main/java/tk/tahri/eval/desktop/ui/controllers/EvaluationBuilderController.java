@@ -34,9 +34,11 @@ import tk.tahri.eval.desktop.model.EvaluationState;
 import tk.tahri.eval.desktop.model.Question;
 import tk.tahri.eval.desktop.service.EvaluationService;
 import tk.tahri.eval.desktop.service.ImageStorageService;
+import tk.tahri.eval.desktop.service.QuestionExcelService;
 import tk.tahri.eval.desktop.ui.NotificationService;
 import tk.tahri.eval.desktop.ui.util.DesktopFileViewer;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.net.URL;
 import java.nio.file.Files;
@@ -75,6 +77,8 @@ public class EvaluationBuilderController implements Initializable {
 
     @FXML private ListView<Question> questionsListView;
     @FXML private Button btnAddQuestion;
+    @FXML private Button btnImportExcel;
+    @FXML private Button btnExportExcel;
     @FXML private Button btnSave;
     @FXML private Button btnPreviewDraft;
     @FXML private Button btnGeneratePdf;
@@ -89,6 +93,7 @@ public class EvaluationBuilderController implements Initializable {
     private final NotificationService notificationService;
     private final MainLayoutController mainLayoutController;
     private final ImageStorageService imageStorageService;
+    private final QuestionExcelService questionExcelService;
 
     private Evaluation currentEvaluation;
     private final ObservableList<Question> questionsList = FXCollections.observableArrayList();
@@ -97,12 +102,14 @@ public class EvaluationBuilderController implements Initializable {
                                        DocumentService documentService,
                                        NotificationService notificationService,
                                        @Lazy MainLayoutController mainLayoutController,
-                                       ImageStorageService imageStorageService) {
+                                       ImageStorageService imageStorageService,
+                                       QuestionExcelService questionExcelService) {
         this.evaluationService = evaluationService;
         this.documentService = documentService;
         this.notificationService = notificationService;
         this.mainLayoutController = mainLayoutController;
         this.imageStorageService = imageStorageService;
+        this.questionExcelService = questionExcelService;
     }
 
     @Override
@@ -115,6 +122,8 @@ public class EvaluationBuilderController implements Initializable {
 
     private void setupIcons() {
         if (btnAddQuestion != null) btnAddQuestion.setGraphic(new FontIcon(Feather.PLUS));
+        if (btnImportExcel != null) btnImportExcel.setGraphic(new FontIcon(Feather.UPLOAD));
+        if (btnExportExcel != null) btnExportExcel.setGraphic(new FontIcon(Feather.DOWNLOAD));
         if (btnSave != null) btnSave.setGraphic(new FontIcon(Feather.SAVE));
         if (btnPreviewDraft != null) btnPreviewDraft.setGraphic(new FontIcon(Feather.EYE));
         if (btnGeneratePdf != null) btnGeneratePdf.setGraphic(new FontIcon(Feather.FILE_TEXT));
@@ -382,6 +391,7 @@ public class EvaluationBuilderController implements Initializable {
         txtScoreIncorrect.setDisable(isLocked);
 
         if (btnAddQuestion != null) btnAddQuestion.setDisable(isLocked);
+        if (btnImportExcel != null) btnImportExcel.setDisable(isLocked);
         if (btnSave != null) btnSave.setDisable(isLocked);
         if (btnGeneratePdf != null) btnGeneratePdf.setDisable(isLocked);
         if (progressBox != null) {
@@ -451,6 +461,115 @@ public class EvaluationBuilderController implements Initializable {
             return;
         }
         showQuestionDialog(null);
+    }
+
+    @FXML
+    public void onImportExcel() {
+        if (currentEvaluation != null && currentEvaluation.getState() != EvaluationState.CONCEPTION) {
+            notificationService.showWarning("Modification impossible", "Cette évaluation est verrouillée (statut " + currentEvaluation.getState() + ") et ne peut plus être modifiée.");
+            return;
+        }
+
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Importer des questions depuis un fichier Excel");
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Fichiers Excel (*.xlsx)", "*.xlsx")
+        );
+        Window window = questionsListView != null && questionsListView.getScene() != null ? questionsListView.getScene().getWindow() : null;
+        File file = fileChooser.showOpenDialog(window);
+        if (file == null) return;
+
+        double scoreCorrect = parseDoubleOrDefault(txtScoreCorrect, 1.0);
+        double scoreEmpty = parseDoubleOrDefault(txtScoreEmpty, 0.0);
+        double scoreIncorrect = parseDoubleOrDefault(txtScoreIncorrect, 0.0);
+
+        try (FileInputStream fis = new FileInputStream(file)) {
+            List<Question> imported = questionExcelService.parseQuestionsFromExcel(fis, scoreCorrect, scoreEmpty, scoreIncorrect);
+
+            if (imported.isEmpty()) {
+                notificationService.showWarning("Importation vide", "Aucune question n'a été trouvée dans le fichier Excel.");
+                return;
+            }
+
+            // Si la liste contient déjà des questions, demander s'il faut ajouter ou remplacer
+            if (!questionsList.isEmpty()) {
+                Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                alert.setTitle("Mode d'importation");
+                alert.setHeaderText("Des questions existent déjà (" + questionsList.size() + " question(s))");
+                alert.setContentText("Souhaitez-vous ajouter les nouvelles questions à la suite ou remplacer les questions existantes ?");
+
+                ButtonType btnAppend = new ButtonType("Ajouter à la suite", ButtonBar.ButtonData.YES);
+                ButtonType btnReplace = new ButtonType("Remplacer", ButtonBar.ButtonData.NO);
+                ButtonType btnCancel = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+                alert.getButtonTypes().setAll(btnAppend, btnReplace, btnCancel);
+                Optional<ButtonType> result = alert.showAndWait();
+
+                if (result.isEmpty() || result.get() == btnCancel) {
+                    return;
+                } else if (result.get() == btnReplace) {
+                    questionsList.setAll(imported);
+                } else {
+                    questionsList.addAll(imported);
+                }
+            } else {
+                questionsList.addAll(imported);
+            }
+
+            recalculateTotalPoints();
+            updateSaveStatusModified();
+            notificationService.showToast("Importation réussie : " + imported.size() + " question(s) importée(s) depuis Excel.", NotificationService.ToastType.SUCCESS);
+        } catch (IllegalArgumentException ex) {
+            log.warn("Validation échouée lors de l'import Excel des questions: {}", ex.getMessage());
+            notificationService.showWarning("Fichier Excel invalide", ex.getMessage());
+        } catch (Exception ex) {
+            log.error("Erreur lors de l'import Excel des questions", ex);
+            notificationService.showError("Erreur d'importation", "Impossible de lire le fichier Excel : " + ex.getMessage());
+        }
+    }
+
+    @FXML
+    public void onExportExcel() {
+        boolean isTemplate = questionsList.isEmpty();
+
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle(isTemplate ? "Exporter le modèle Excel de questions" : "Exporter les questions vers Excel");
+
+        String safeName = currentEvaluation != null && currentEvaluation.getDesignation() != null
+                ? currentEvaluation.getDesignation().replaceAll("[^a-zA-Z0-9_-]", "_")
+                : "";
+
+        String defaultFileName = isTemplate
+                ? (safeName.isEmpty() ? "Modele_Questions.xlsx" : "Modele_Questions_" + safeName + ".xlsx")
+                : (safeName.isEmpty() ? "Questions.xlsx" : "Questions_" + safeName + ".xlsx");
+
+        fileChooser.setInitialFileName(defaultFileName);
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Fichier Excel (*.xlsx)", "*.xlsx")
+        );
+        Window window = questionsListView != null && questionsListView.getScene() != null ? questionsListView.getScene().getWindow() : null;
+        File file = fileChooser.showSaveDialog(window);
+        if (file == null) return;
+
+        try {
+            questionExcelService.exportQuestionsToExcel(new ArrayList<>(questionsList), file);
+            String successMsg = isTemplate
+                    ? "Modèle Excel exporté avec succès vers : " + file.getName()
+                    : "Questions exportées avec succès vers : " + file.getName();
+            notificationService.showToast(successMsg, NotificationService.ToastType.SUCCESS);
+        } catch (Exception ex) {
+            log.error("Erreur lors de l'export Excel des questions", ex);
+            notificationService.showError("Erreur d'exportation", "Impossible d'exporter le fichier Excel : " + ex.getMessage());
+        }
+    }
+
+    private double parseDoubleOrDefault(TextField field, double def) {
+        if (field == null || field.getText() == null) return def;
+        try {
+            return Double.parseDouble(field.getText().trim().replace(',', '.'));
+        } catch (NumberFormatException e) {
+            return def;
+        }
     }
 
     private void showQuestionDialog(Question existing) {

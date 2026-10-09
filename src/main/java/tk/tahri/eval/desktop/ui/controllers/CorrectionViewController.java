@@ -35,6 +35,7 @@ import tk.tahri.eval.desktop.model.Group;
 import tk.tahri.eval.desktop.service.EvaluationService;
 import tk.tahri.eval.desktop.service.GroupService;
 import tk.tahri.eval.desktop.ui.NotificationService;
+import tk.tahri.eval.desktop.ui.util.TaskProgressDialog;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -909,6 +910,14 @@ public class CorrectionViewController implements Initializable {
             lblProgressStatus.setText("Initialisation de la reconnaissance optique de " + file.getName() + "...");
         }
 
+        TaskProgressDialog progressDialog = new TaskProgressDialog(
+                getWindow(),
+                "Correction optique",
+                "Reconnaissance optique des copies (" + file.getName() + ")",
+                Feather.CHECK_CIRCLE
+        );
+        progressDialog.show();
+
         Task<ProcessingResult> task = new Task<>() {
             @Override
             protected ProcessingResult call() throws Exception {
@@ -916,17 +925,39 @@ public class CorrectionViewController implements Initializable {
                         currentGroup.getId(),
                         eval.getId(),
                         selectedScanFile,
-                        msg -> Platform.runLater(() -> {
-                            if (lblProgressStatus != null) lblProgressStatus.setText(msg);
-                        }),
-                        progress -> Platform.runLater(() -> {
-                            if (progressBar != null) progressBar.setProgress(progress);
-                        })
+                        tp -> {
+                            progressDialog.update(tp);
+                            Platform.runLater(() -> {
+                                if (lblProgressStatus != null) {
+                                    lblProgressStatus.setText(tp.stageTitle() + " • " + tp.currentDetail());
+                                }
+                                if (progressBar != null) {
+                                    progressBar.setProgress(tp.progressRatio());
+                                }
+                            });
+                        }
                 );
             }
         };
 
+        progressDialog.setOnCancel(() -> task.cancel(true));
+
+        task.setOnCancelled(e -> {
+            progressDialog.close();
+            if (btnStartCorrection != null) btnStartCorrection.setDisable(false);
+            if (progressBox != null) {
+                progressBox.setVisible(false);
+                progressBox.setManaged(false);
+            }
+            if (progressBar != null) progressBar.setVisible(false);
+            if (lblProgressStatus != null) lblProgressStatus.setVisible(false);
+
+            notificationService.showWarning("Correction interrompue", "L'analyse du fichier de scan a été annulée par l'utilisateur.");
+            loadDashboard(eval.getId());
+        });
+
         task.setOnSucceeded(e -> {
+            progressDialog.close();
             if (btnStartCorrection != null) btnStartCorrection.setDisable(false);
             if (progressBox != null) {
                 progressBox.setVisible(false);
@@ -950,6 +981,7 @@ public class CorrectionViewController implements Initializable {
         });
 
         task.setOnFailed(e -> {
+            progressDialog.close();
             if (btnStartCorrection != null) btnStartCorrection.setDisable(false);
             if (progressBox != null) {
                 progressBox.setVisible(false);

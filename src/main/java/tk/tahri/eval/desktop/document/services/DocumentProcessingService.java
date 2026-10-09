@@ -23,6 +23,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import tk.tahri.eval.desktop.document.dto.Barcode;
 import tk.tahri.eval.desktop.document.dto.MarkLocation;
+import tk.tahri.eval.desktop.document.dto.TaskProgress;
+import tk.tahri.eval.desktop.document.dto.TaskProgressTracker;
 import tk.tahri.eval.desktop.document.entities.Setting;
 import tk.tahri.eval.desktop.document.entities.UncorrectedPage;
 import tk.tahri.eval.desktop.document.entities.UncorrectedPageSource;
@@ -83,6 +85,25 @@ public class DocumentProcessingService {
     public ProcessingResult processScanFile(String groupId, String evaluationId, File file,
                                             Consumer<String> statusConsumer,
                                             Consumer<Double> progressConsumer) throws IOException {
+        TaskProgressTracker tracker = new TaskProgressTracker(tp -> {
+            if (statusConsumer != null) {
+                statusConsumer.accept(tp.stageTitle() + " : " + tp.currentDetail());
+            }
+            if (progressConsumer != null) {
+                progressConsumer.accept(tp.progressRatio());
+            }
+        });
+        return processScanFile(groupId, evaluationId, file, tracker);
+    }
+
+    public ProcessingResult processScanFile(String groupId, String evaluationId, File file,
+                                            Consumer<TaskProgress> progressConsumer) throws IOException {
+        TaskProgressTracker tracker = new TaskProgressTracker(progressConsumer);
+        return processScanFile(groupId, evaluationId, file, tracker);
+    }
+
+    public ProcessingResult processScanFile(String groupId, String evaluationId, File file,
+                                            TaskProgressTracker tracker) throws IOException {
         var evaluation = evaluationRepository.findById(evaluationId)
                 .filter(e -> groupId.equals(e.groupId()))
                 .orElseThrow(() -> new NotFoundException("Évaluation introuvable : " + evaluationId));
@@ -95,16 +116,13 @@ public class DocumentProcessingService {
         Path target = evalDir.resolve("files").resolve("scan_" + UUID.randomUUID() + "_" + file.getName());
         Files.copy(file.toPath(), target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 
-        if (statusConsumer != null) statusConsumer.accept("Découpage des pages du document...");
-        int totalPages = saveEachDocumentPageAsImage(target, evalDir, evaluationId);
+        int totalPages = saveEachDocumentPageAsImage(target, evalDir, evaluationId, tracker);
 
-        if (statusConsumer != null) statusConsumer.accept("Analyse optique des " + totalPages + " pages...");
-        ProcessingResult result = loadAndProcessPages(groupId, evalDir, evaluationId, totalPages, statusConsumer, progressConsumer);
-
-        return result;
+        return loadAndProcessPages(groupId, evalDir, evaluationId, totalPages, tracker);
     }
 
-    private int saveEachDocumentPageAsImage(Path file, Path root, String evaluationId) throws IOException {
+    private int saveEachDocumentPageAsImage(Path file, Path root, String evaluationId,
+                                            TaskProgressTracker tracker) throws IOException {
         var pages = root.resolve("pages");
         Files.createDirectories(pages);
 
@@ -118,24 +136,38 @@ public class DocumentProcessingService {
             try (var document = Loader.loadPDF(file.toFile())) {
                 var pdfRenderer = new PDFRenderer(document);
                 int numberOfPages = document.getNumberOfPages();
+                if (tracker != null) {
+                    tracker.setStage("Phase 1/2 : Extraction haute résolution des pages", numberOfPages, 0.0, 0.30);
+                }
                 for (int i = 0; i < numberOfPages; ++i) {
+                    if (Thread.currentThread().isInterrupted()) {
+                        throw new IOException("Traitement interrompu par l'utilisateur.");
+                    }
                     var image = pdfRenderer.renderImageWithDPI(i, 300, ImageType.GRAY);
                     var path = pages.resolve("page_" + String.format("%04d", i + 1) + "_" + UUID.randomUUID() + ".png");
                     ImageIO.write(image, "png", path.toFile());
+                    if (tracker != null) {
+                        tracker.updateStep(i + 1, "Page " + (i + 1) + " / " + numberOfPages + " extraite (300 DPI)");
+                    }
                 }
                 return numberOfPages;
             }
         } else {
+            if (tracker != null) {
+                tracker.setStage("Phase 1/2 : Préparation de l'image", 1, 0.0, 0.30);
+            }
             var path = pages.resolve("page_0001_" + UUID.randomUUID() + ".png");
             Files.copy(file, path);
+            if (tracker != null) {
+                tracker.updateStep(1, "Image prête pour analyse");
+            }
             return 1;
         }
     }
 
     private ProcessingResult loadAndProcessPages(String groupId, Path evalDir, String evaluationId,
                                                 int totalExpected,
-                                                Consumer<String> statusConsumer,
-                                                Consumer<Double> progressConsumer) throws IOException {
+                                                TaskProgressTracker tracker) throws IOException {
         var path = evalDir.resolve("pages");
 
         try (var filesStream = Files.list(path)) {
@@ -145,13 +177,17 @@ public class DocumentProcessingService {
             int correctedCount = 0;
             int uncorrectedCount = 0;
 
+            if (tracker != null) {
+                tracker.setStage("Phase 2/2 : Reconnaissance optique et détection OMR", total, 0.30, 0.70);
+            }
+
             for (var file : files) {
-                current++;
-                if (progressConsumer != null) {
-                    progressConsumer.accept((double) current / total);
+                if (Thread.currentThread().isInterrupted()) {
+                    throw new IOException("Traitement interrompu par l'utilisateur.");
                 }
-                if (statusConsumer != null) {
-                    statusConsumer.accept("Analyse de la page " + current + " / " + total + "...");
+                current++;
+                if (tracker != null) {
+                    tracker.updateStep(current, "Analyse optique de la page " + current + " / " + total + "...");
                 }
 
                 try {
@@ -159,6 +195,9 @@ public class DocumentProcessingService {
                     if (image.empty()) {
                         log.warn("Impossible de lire le fichier image : {}", file);
                         uncorrectedCount++;
+                        if (tracker != null) {
+                            tracker.recordWarning();
+                        }
                         continue;
                     }
 
@@ -180,11 +219,17 @@ public class DocumentProcessingService {
                             log.info("Page {} détectée comme vierge, ignorée.", file.getFileName());
                             FileUtils.deleteQuietly(file.toFile());
                             scaledImage.release();
+                            if (tracker != null) {
+                                tracker.recordSuccess();
+                            }
                             continue;
                         }
                         scaledImage.release();
                         this.saveUncorrectedPage(groupId, evaluationId, file.getFileName().toString(), UncorrectedPageSource.MARKS_ERROR);
                         uncorrectedCount++;
+                        if (tracker != null) {
+                            tracker.recordWarning();
+                        }
                         continue;
                     }
                     scaledImage.release();
@@ -197,8 +242,14 @@ public class DocumentProcessingService {
                             if (isCorrected) {
                                 FileUtils.deleteQuietly(file.toFile());
                                 correctedCount++;
+                                if (tracker != null) {
+                                    tracker.recordSuccess();
+                                }
                             } else {
                                 uncorrectedCount++;
+                                if (tracker != null) {
+                                    tracker.recordWarning();
+                                }
                             }
                         } else {
                             var rotatedImage = new Mat();
@@ -210,12 +261,21 @@ public class DocumentProcessingService {
                                     if (isCorrected) {
                                         FileUtils.deleteQuietly(file.toFile());
                                         correctedCount++;
+                                        if (tracker != null) {
+                                            tracker.recordSuccess();
+                                        }
                                     } else {
                                         uncorrectedCount++;
+                                        if (tracker != null) {
+                                            tracker.recordWarning();
+                                        }
                                     }
                                 } else {
                                     this.saveUncorrectedPage(groupId, evaluationId, file.getFileName().toString(), UncorrectedPageSource.BARCODE_ERROR);
                                     uncorrectedCount++;
+                                    if (tracker != null) {
+                                        tracker.recordWarning();
+                                    }
                                 }
                             } finally {
                                 rotatedImage.release();
@@ -228,6 +288,9 @@ public class DocumentProcessingService {
                     log.error("Échec du traitement de la page : {}", file.getFileName(), e);
                     this.saveUncorrectedPage(groupId, evaluationId, file.getFileName().toString(), UncorrectedPageSource.BARCODE_ERROR);
                     uncorrectedCount++;
+                    if (tracker != null) {
+                        tracker.recordWarning();
+                    }
                 }
             }
 
@@ -240,8 +303,8 @@ public class DocumentProcessingService {
                 });
             }
 
-            if (statusConsumer != null) {
-                statusConsumer.accept("Traitement terminé : " + correctedCount + " page(s) corrigée(s), " + uncorrectedCount + " non reconnue(s).");
+            if (tracker != null) {
+                tracker.setComplete("Correction terminée : " + correctedCount + " page(s) corrigée(s), " + uncorrectedCount + " rejetée(s).");
             }
             return new ProcessingResult(total, correctedCount, uncorrectedCount);
         }

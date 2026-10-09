@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tk.tahri.eval.desktop.document.SharedAssessmentData;
 import tk.tahri.eval.desktop.document.dto.StudentDetails;
+import tk.tahri.eval.desktop.document.dto.TaskProgress;
+import tk.tahri.eval.desktop.document.dto.TaskProgressTracker;
 import tk.tahri.eval.desktop.document.entities.Setting;
 import tk.tahri.eval.desktop.document.entities.blueprint.AssessmentStudent;
 import tk.tahri.eval.desktop.document.entities.blueprint.BlueprintPaperAssessment;
@@ -96,7 +98,17 @@ public class DocumentService {
     }
 
     @Transactional
-    public File generateEvaluation(String groupId, String evaluationId, Consumer<Double> progressConsumer) throws Exception {
+    public File generateEvaluation(String groupId, String evaluationId) throws Exception {
+        return generateEvaluation(groupId, evaluationId, (Consumer<TaskProgress>) null);
+    }
+
+    @Transactional
+    public File generateEvaluation(String groupId, String evaluationId, Consumer<TaskProgress> progressConsumer) throws Exception {
+        TaskProgressTracker tracker = progressConsumer != null ? new TaskProgressTracker(progressConsumer) : null;
+        return generateEvaluation(groupId, evaluationId, tracker);
+    }
+
+    private File generateEvaluation(String groupId, String evaluationId, TaskProgressTracker tracker) throws Exception {
         EvaluationData data = loadEvaluationData(groupId, evaluationId);
 
         if (data.evaluation().questions() == null || data.evaluation().questions().isEmpty()) {
@@ -109,6 +121,10 @@ public class DocumentService {
         }
 
         int total = enrollments.size();
+        if (tracker != null) {
+            tracker.setStage("Phase 1/2 : Rendu des sujets avec codes-barres", total, 0.0, 0.85);
+        }
+
         final var document = new PDDocument();
         final var font = loadFont(document);
         final var sharedAssessmentData = new SharedAssessmentData(document, false, data.evaluation(), data.group(), font);
@@ -118,6 +134,9 @@ public class DocumentService {
         try {
             int current = 0;
             for (var enrollment : enrollments) {
+                if (Thread.currentThread().isInterrupted()) {
+                    throw new InterruptedException("Génération interrompue par l'utilisateur.");
+                }
                 current++;
                 var student = new AssessmentStudent(
                         enrollment.getId(), enrollment.getFirstName(), enrollment.getLastName(), enrollment.getMatriculation());
@@ -132,11 +151,17 @@ public class DocumentService {
                     blueprintAssessments.add(assessmentPages.getBlueprintAssessment());
                 }
 
-                if (progressConsumer != null) {
-                    progressConsumer.accept((double) current / total * 0.8);
+                if (tracker != null) {
+                    String studentName = (enrollment.getLastName() != null ? enrollment.getLastName() : "") + " " +
+                            (enrollment.getFirstName() != null ? enrollment.getFirstName() : "");
+                    tracker.updateStep(current, "Sujet " + current + " / " + total + " : " + studentName.trim());
                 }
             }
 
+            if (tracker != null) {
+                tracker.setStage("Phase 2/2 : Finalisation et enregistrement du fichier PDF", 1, 0.85, 0.15);
+                tracker.updateStep(1, "Compression et écriture du PDF sur disque...");
+            }
             document.save(pdfBytes);
         } finally {
             document.close();
@@ -159,8 +184,8 @@ public class DocumentService {
         Files.write(pdfFile, pdfBytes.toByteArray());
         log.info("PDF d'évaluation généré pour {} ({} étudiants) dans {}", evaluationId, enrollments.size(), pdfFile.toAbsolutePath());
 
-        if (progressConsumer != null) {
-            progressConsumer.accept(1.0);
+        if (tracker != null) {
+            tracker.setComplete("Génération terminée avec succès (" + total + " sujets générés).");
         }
         return pdfFile.toFile();
     }

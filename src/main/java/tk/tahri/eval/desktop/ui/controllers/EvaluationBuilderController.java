@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
+import tk.tahri.eval.desktop.document.dto.TaskProgress;
 import tk.tahri.eval.desktop.document.services.DocumentService;
 import tk.tahri.eval.desktop.model.Answer;
 import tk.tahri.eval.desktop.model.Evaluation;
@@ -37,6 +38,7 @@ import tk.tahri.eval.desktop.service.ImageStorageService;
 import tk.tahri.eval.desktop.service.QuestionExcelService;
 import tk.tahri.eval.desktop.ui.NotificationService;
 import tk.tahri.eval.desktop.ui.util.DesktopFileViewer;
+import tk.tahri.eval.desktop.ui.util.TaskProgressDialog;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -944,18 +946,43 @@ public class EvaluationBuilderController implements Initializable {
         if (progressBar != null) progressBar.setProgress(0.0);
         if (lblProgress != null) lblProgress.setText("Génération des copies avec codes-barres personnalisés...");
 
+        TaskProgressDialog progressDialog = new TaskProgressDialog(
+                btnGeneratePdf != null && btnGeneratePdf.getScene() != null ? btnGeneratePdf.getScene().getWindow() : null,
+                "Génération des copies",
+                "Génération du sujet PDF personnalisé",
+                Feather.FILE_TEXT
+        );
+        progressDialog.show();
+
         Task<Void> task = new Task<>() {
             @Override
             protected Void call() throws Exception {
                 documentService.generateEvaluation(groupId, evalId,
-                        progress -> Platform.runLater(() -> {
-                            if (progressBar != null) progressBar.setProgress(progress);
-                        }));
+                        tp -> {
+                            progressDialog.update(tp);
+                            Platform.runLater(() -> {
+                                if (progressBar != null) progressBar.setProgress(tp.progressRatio());
+                                if (lblProgress != null) lblProgress.setText(tp.stageTitle() + " • " + tp.currentDetail());
+                            });
+                        });
                 return null;
             }
         };
 
+        progressDialog.setOnCancel(() -> task.cancel(true));
+
+        task.setOnCancelled(e -> {
+            progressDialog.close();
+            if (btnGeneratePdf != null) btnGeneratePdf.setDisable(false);
+            if (progressBox != null) {
+                progressBox.setVisible(false);
+                progressBox.setManaged(false);
+            }
+            notificationService.showWarning("Génération interrompue", "La génération des copies a été annulée par l'utilisateur.");
+        });
+
         task.setOnSucceeded(e -> {
+            progressDialog.close();
             if (btnGeneratePdf != null) btnGeneratePdf.setDisable(false);
             if (progressBox != null) {
                 progressBox.setVisible(false);
@@ -969,6 +996,7 @@ public class EvaluationBuilderController implements Initializable {
         });
 
         task.setOnFailed(e -> {
+            progressDialog.close();
             if (btnGeneratePdf != null) btnGeneratePdf.setDisable(false);
             if (progressBox != null) {
                 progressBox.setVisible(false);

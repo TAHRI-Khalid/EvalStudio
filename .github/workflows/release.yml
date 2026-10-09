@@ -19,7 +19,7 @@ jobs:
   # 1. BUILD LINUX & UNIVERSAL JAR
   # --------------------------------------------------------------------------
   build-linux:
-    name: Build Linux & Jar (${{ matrix.os }})
+    name: Build Linux & Jar
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -37,7 +37,7 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Set up JDK 25
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '25'
           distribution: 'oracle'
@@ -60,6 +60,8 @@ jobs:
           cp "$JAR_SRC" "release-artifacts/eval_desktop-${{ env.VERSION }}.jar"
 
       - name: Générer les paquets Linux (DEB, RPM, App-Image)
+        env:
+          SKIP_BUILD: "true"
         run: |
           chmod +x ./package-native.sh
           # Empaquetage DEB
@@ -103,11 +105,22 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Set up JDK 25
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '25'
           distribution: 'oracle'
           cache: maven
+
+      - name: Configurer WiX Toolset
+        shell: powershell
+        run: |
+          $wixPath = "C:\Program Files (x86)\WiX Toolset v3.11\bin"
+          if (Test-Path $wixPath) {
+            echo $wixPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            Write-Host "WiX 3.11 ajouté au GITHUB_PATH"
+          } else {
+            choco install wixtoolset --yes
+          }
 
       - name: Compiler le projet
         shell: cmd
@@ -118,9 +131,9 @@ jobs:
         shell: powershell
         run: |
           # Packaging MSI
-          powershell -ExecutionPolicy Bypass -File .\package-native.ps1 -PackageType msi -AppVersion "${{ env.VERSION }}"
+          .\package-native.ps1 -PackageType msi -AppVersion "${{ env.VERSION }}"
           # Packaging App-Image
-          powershell -ExecutionPolicy Bypass -File .\package-native.ps1 -PackageType app-image -AppVersion "${{ env.VERSION }}"
+          .\package-native.ps1 -PackageType app-image -AppVersion "${{ env.VERSION }}"
 
           New-Item -ItemType Directory -Path release-artifacts -Force | Out-Null
           
@@ -157,7 +170,7 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Set up JDK 25
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '25'
           distribution: 'oracle'
@@ -169,6 +182,8 @@ jobs:
           ./mvnw clean package -DskipTests
 
       - name: Générer le package macOS DMG
+        env:
+          SKIP_BUILD: "true"
         run: |
           chmod +x ./package-native.sh
           ./package-native.sh dmg "${{ env.VERSION }}"

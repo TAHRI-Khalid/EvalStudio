@@ -54,7 +54,7 @@ echo "Type de paquet demandé  : $PACKAGE_TYPE"
 echo "Version de l'application : $APP_VERSION"
 
 echo "=== [2/4] Compilation et création de l'archive JAR ==="
-if [ ! -f "target/eval_desktop-*.jar" ] && [ "${SKIP_BUILD:-false}" != "true" ]; then
+if ! ls target/eval_desktop-*.jar 1>/dev/null 2>&1 && [ "${SKIP_BUILD:-false}" != "true" ]; then
     if [ -x "./mvnw" ]; then
         ./mvnw clean package -DskipTests
     else
@@ -67,7 +67,7 @@ INPUT_DIR="target/jpackage-input"
 rm -rf "$INPUT_DIR"
 mkdir -p "$INPUT_DIR"
 
-JAR_FILE=$(ls target/eval_desktop-*.jar | head -n 1)
+JAR_FILE=$(ls target/eval_desktop-*.jar 2>/dev/null | head -n 1)
 if [ -z "$JAR_FILE" ]; then
     echo "ERREUR : Aucun fichier JAR trouvé dans target/"
     exit 1
@@ -90,7 +90,7 @@ EXTRA_OPTS=()
 if [ "$OS_FAMILY" = "linux" ] && [ "$PACKAGE_TYPE" != "app-image" ]; then
     EXTRA_OPTS=(--linux-shortcut --linux-menu-group "Education;Office;" --linux-package-name "evalstudio")
 elif [ "$OS_FAMILY" = "macos" ]; then
-    EXTRA_OPTS=(--mac-package-name "EvalStudio" --mac-package-identifier "tk.tahri.evalstudio")
+    EXTRA_OPTS=(--mac-package-identifier "tk.tahri.evalstudio")
 elif [ "$OS_FAMILY" = "windows" ] && [ "$PACKAGE_TYPE" != "app-image" ]; then
     EXTRA_OPTS=(--win-menu --win-shortcut --win-dir-chooser)
 fi

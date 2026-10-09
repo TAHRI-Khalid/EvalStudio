@@ -25,6 +25,24 @@ if (-not $JpackageCmd) {
     exit 1
 }
 
+# Détection automatique de WiX Toolset pour les installateurs MSI / EXE
+if ($PackageType -eq "msi" -or $PackageType -eq "exe") {
+    $WixCandidates = @(
+        "C:\Program Files (x86)\WiX Toolset v3.11\bin",
+        "C:\Program Files (x86)\WiX Toolset v3.14\bin",
+        "C:\Program Files\WiX Toolset v3.11\bin"
+    )
+    foreach ($Cand in $WixCandidates) {
+        if (Test-Path $Cand) {
+            if (-not ($env:PATH -split ';' -contains $Cand)) {
+                $env:PATH = "$Cand;$env:PATH"
+                Write-Host "WiX Toolset détecté et ajouté au PATH : $Cand" -ForegroundColor Green
+            }
+            break
+        }
+    }
+}
+
 Write-Host "Utilisation de jpackage : $JpackageCmd"
 Write-Host "Type de paquet          : $PackageType"
 Write-Host "Version                 : $CleanVersion"
@@ -77,6 +95,10 @@ $JpackageArgs = @(
 ) + $IconOpt + $ExtraOpts
 
 & $JpackageCmd @JpackageArgs
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Échec de jpackage (code d'erreur $LASTEXITCODE)"
+    exit $LASTEXITCODE
+}
 
 Write-Host "==============================================================================" -ForegroundColor Green
 Write-Host " Packaging Windows terminé avec succès !" -ForegroundColor Green

@@ -1,4 +1,4 @@
-# Maven
+# Maven & Builds
 target/
 dist/
 pom.xml.tag
@@ -10,20 +10,26 @@ dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
 
-# Local database & logs
-data/
+# Bases de données locales et traces (H2)
+data*/
 *.db
+*.mv.db
+*.trace.db
 *.log
 
-# Generated evaluation uploads & temporary files
-upload/evaluations/
-upload/question_images/*
-upload/group_logos_sm/*
-upload/group_logos_xm/*
-upload/course_logos_sm/*
-upload/course_logos_xm/*
+# Fichiers et dossiers d'uploads temporaires
+upload/
 !upload/**/.gitkeep
 *.tmp
+
+# Secrets, identifiants et certificats
+*.env
+*.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
 
 # IDE & OS
 .idea/

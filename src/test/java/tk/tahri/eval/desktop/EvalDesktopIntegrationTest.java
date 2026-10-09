@@ -203,15 +203,28 @@ public class EvalDesktopIntegrationTest {
             }
         }
 
-        // 10. Test de suppression en cascade de l'évaluation
+        // 9b. Test de réinitialisation en mode conception (suppression des données de production)
         Path evalDir = Path.of("upload", "evaluations", reloadedEval.getId());
-        assertTrue(Files.exists(evalDir), "Le répertoire des artefacts doit exister avant la suppression");
+        assertTrue(Files.exists(evalDir), "Le répertoire des artefacts de production doit exister avant le reset");
+        assertFalse(blueprintPaperAssessmentRepository.findByGroupIdAndEvaluationId(group.getId(), reloadedEval.getId()).isEmpty(),
+                "Des blueprints doivent exister avant le reset");
 
+        Evaluation resetEval = evaluationService.resetToConception(reloadedEval.getId());
+        assertEquals(EvaluationState.CONCEPTION, resetEval.getState(), "L'évaluation doit être de nouveau en CONCEPTION");
+        assertTrue(blueprintPaperAssessmentRepository.findByGroupIdAndEvaluationId(group.getId(), reloadedEval.getId()).isEmpty(),
+                "Tous les blueprints doivent être supprimés après resetToConception");
+        assertFalse(Files.exists(evalDir), "Le répertoire des artefacts de production doit être supprimé après resetToConception");
+
+        // Vérification qu'on peut à nouveau ajouter une question et sauvegarder
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> {
+            evaluationService.addQuestion(resetEval.getId(), new Question(UUID.randomUUID().toString(), "Nouvelle question déverrouillée", null, false, 2.0, 0.0, 0.0, List.of()));
+        }, "L'ajout d'une question doit être possible après être retourné en mode conception");
+
+        // 10. Test de suppression en cascade de l'évaluation
         evaluationService.deleteEvaluation(reloadedEval.getId());
         assertTrue(evaluationRepository.findById(reloadedEval.getId()).isEmpty(), "L'évaluation doit être supprimée de la base");
         assertTrue(blueprintPaperAssessmentRepository.findByGroupIdAndEvaluationId(group.getId(), reloadedEval.getId()).isEmpty(),
                 "Tous les blueprints associés doivent être supprimés en cascade de la base");
-        assertFalse(Files.exists(evalDir), "Le répertoire des artefacts sur le disque doit être supprimé");
 
         Path qImgPath = imageStorageService.getImagePath(storedImgName, tk.tahri.eval.desktop.service.ImageStorageService.ImageFolder.QUESTION_IMAGES, false);
         if (qImgPath != null) {

@@ -81,7 +81,6 @@ public class EvaluationBuilderController implements Initializable {
     @FXML private Button btnAddQuestion;
     @FXML private Button btnImportExcel;
     @FXML private Button btnExportExcel;
-    @FXML private Button btnSave;
     @FXML private Button btnPreviewDraft;
     @FXML private Button btnGeneratePdf;
     @FXML private Button btnBack;
@@ -99,6 +98,8 @@ public class EvaluationBuilderController implements Initializable {
 
     private Evaluation currentEvaluation;
     private final ObservableList<Question> questionsList = FXCollections.observableArrayList();
+    private final javafx.animation.PauseTransition autoSaveDebounce = new javafx.animation.PauseTransition(javafx.util.Duration.millis(400));
+    private boolean isUpdatingUi = false;
 
     public EvaluationBuilderController(EvaluationService evaluationService,
                                        DocumentService documentService,
@@ -116,6 +117,7 @@ public class EvaluationBuilderController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        autoSaveDebounce.setOnFinished(e -> saveEvaluationData());
         setupIcons();
         setupSpinners();
         setupListView();
@@ -124,9 +126,14 @@ public class EvaluationBuilderController implements Initializable {
 
     private void setupIcons() {
         if (btnAddQuestion != null) btnAddQuestion.setGraphic(new FontIcon(Feather.PLUS));
-        if (btnImportExcel != null) btnImportExcel.setGraphic(new FontIcon(Feather.UPLOAD));
-        if (btnExportExcel != null) btnExportExcel.setGraphic(new FontIcon(Feather.DOWNLOAD));
-        if (btnSave != null) btnSave.setGraphic(new FontIcon(Feather.SAVE));
+        if (btnImportExcel != null) {
+            btnImportExcel.setGraphic(new FontIcon(Feather.UPLOAD));
+            btnImportExcel.setTooltip(new Tooltip("Importer des questions depuis un fichier Excel (.xlsx)"));
+        }
+        if (btnExportExcel != null) {
+            btnExportExcel.setGraphic(new FontIcon(Feather.DOWNLOAD));
+            btnExportExcel.setTooltip(new Tooltip("Exporter les questions vers un fichier Excel (.xlsx)"));
+        }
         if (btnPreviewDraft != null) btnPreviewDraft.setGraphic(new FontIcon(Feather.EYE));
         if (btnGeneratePdf != null) btnGeneratePdf.setGraphic(new FontIcon(Feather.FILE_TEXT));
         if (btnBack != null) btnBack.setGraphic(new FontIcon(Feather.ARROW_LEFT));
@@ -231,7 +238,7 @@ public class EvaluationBuilderController implements Initializable {
                             Question q = questionsList.remove(idx);
                             questionsList.add(idx - 1, q);
                             questionsListView.getSelectionModel().select(idx - 1);
-                            updateSaveStatusModified();
+                            triggerInstantAutoSave();
                         }
                     });
 
@@ -249,7 +256,7 @@ public class EvaluationBuilderController implements Initializable {
                             Question q = questionsList.remove(idx);
                             questionsList.add(idx + 1, q);
                             questionsListView.getSelectionModel().select(idx + 1);
-                            updateSaveStatusModified();
+                            triggerInstantAutoSave();
                         }
                     });
 
@@ -284,8 +291,22 @@ public class EvaluationBuilderController implements Initializable {
                             notificationService.showWarning("Modification impossible", "Une évaluation imprimée ou archivée ne peut pas être modifiée.");
                             return;
                         }
+                        String qText = item.content() != null ? item.content().trim() : "cette question";
+                        if (qText.length() > 60) qText = qText.substring(0, 57) + "...";
+
+                        boolean confirm = notificationService.confirm(
+                                "Supprimer la question",
+                                "Confirmation de suppression",
+                                "Êtes-vous sûr de vouloir supprimer la question :\n« " + qText + " » ?",
+                                "Supprimer la question",
+                                "Annuler"
+                        );
+                        if (!confirm) {
+                            return;
+                        }
+
                         questionsList.remove(item);
-                        updateSaveStatusModified();
+                        triggerInstantAutoSave();
                     });
 
                     actionButtons.getChildren().addAll(btnMoveUp, btnMoveDown, btnEdit, btnDelete);
@@ -314,16 +335,48 @@ public class EvaluationBuilderController implements Initializable {
     }
 
     private void setupInputListeners() {
-        if (txtDesignation != null) txtDesignation.textProperty().addListener((o, ov, nv) -> updateSaveStatusModified());
-        if (comboType != null) comboType.valueProperty().addListener((o, ov, nv) -> updateSaveStatusModified());
-        if (spinDuration != null) spinDuration.valueProperty().addListener((o, ov, nv) -> updateSaveStatusModified());
-        if (comboColumns != null) comboColumns.valueProperty().addListener((o, ov, nv) -> updateSaveStatusModified());
-        if (chkShuffleQuestions != null) chkShuffleQuestions.selectedProperty().addListener((o, ov, nv) -> updateSaveStatusModified());
-        if (chkShuffleAnswers != null) chkShuffleAnswers.selectedProperty().addListener((o, ov, nv) -> updateSaveStatusModified());
-        if (chkDoubleSided != null) chkDoubleSided.selectedProperty().addListener((o, ov, nv) -> updateSaveStatusModified());
-        if (txtScoreCorrect != null) txtScoreCorrect.textProperty().addListener((o, ov, nv) -> updateSaveStatusModified());
-        if (txtScoreEmpty != null) txtScoreEmpty.textProperty().addListener((o, ov, nv) -> updateSaveStatusModified());
-        if (txtScoreIncorrect != null) txtScoreIncorrect.textProperty().addListener((o, ov, nv) -> updateSaveStatusModified());
+        List<TextField> textFields = List.of(txtDesignation, txtScoreCorrect, txtScoreEmpty, txtScoreIncorrect);
+        for (TextField tf : textFields) {
+            if (tf != null) {
+                tf.textProperty().addListener((o, ov, nv) -> triggerDebouncedAutoSave());
+                tf.focusedProperty().addListener((o, wasFocused, isFocused) -> {
+                    if (!isFocused && !isUpdatingUi) {
+                        flushAutoSave();
+                    }
+                });
+            }
+        }
+
+        if (comboType != null) comboType.valueProperty().addListener((o, ov, nv) -> triggerInstantAutoSave());
+        if (spinDuration != null) spinDuration.valueProperty().addListener((o, ov, nv) -> triggerInstantAutoSave());
+        if (comboColumns != null) comboColumns.valueProperty().addListener((o, ov, nv) -> triggerInstantAutoSave());
+        if (chkShuffleQuestions != null) chkShuffleQuestions.selectedProperty().addListener((o, ov, nv) -> triggerInstantAutoSave());
+        if (chkShuffleAnswers != null) chkShuffleAnswers.selectedProperty().addListener((o, ov, nv) -> triggerInstantAutoSave());
+        if (chkDoubleSided != null) chkDoubleSided.selectedProperty().addListener((o, ov, nv) -> triggerInstantAutoSave());
+    }
+
+    private void triggerDebouncedAutoSave() {
+        if (isUpdatingUi || currentEvaluation == null) return;
+        if (currentEvaluation.getState() != EvaluationState.CONCEPTION) return;
+        if (lblSaveStatus != null) {
+            lblSaveStatus.setText("Enregistrement en cours...");
+            lblSaveStatus.setStyle("-fx-text-fill: #b45309; -fx-font-size: 11px;");
+        }
+        autoSaveDebounce.playFromStart();
+    }
+
+    private void triggerInstantAutoSave() {
+        if (isUpdatingUi || currentEvaluation == null) return;
+        if (currentEvaluation.getState() != EvaluationState.CONCEPTION) return;
+        autoSaveDebounce.stop();
+        saveEvaluationData();
+    }
+
+    public void flushAutoSave() {
+        if (autoSaveDebounce.getStatus() == javafx.animation.Animation.Status.RUNNING) {
+            autoSaveDebounce.stop();
+            saveEvaluationData();
+        }
     }
 
     private void recalculateTotalPoints() {
@@ -333,16 +386,6 @@ public class EvaluationBuilderController implements Initializable {
         if (lblHeaderTotalPoints != null) lblHeaderTotalPoints.setText(String.format("Barème total : %.2f pts", total));
         if (lblQuestionsCount != null) {
             lblQuestionsCount.setText("(" + questionsList.size() + " question" + (questionsList.size() > 1 ? "s" : "") + ")");
-        }
-    }
-
-    private void updateSaveStatusModified() {
-        if (currentEvaluation != null && currentEvaluation.getState() != EvaluationState.CONCEPTION) {
-            return;
-        }
-        if (lblSaveStatus != null) {
-            lblSaveStatus.setText("● Non enregistré");
-            lblSaveStatus.setStyle("-fx-text-fill: #b45309; -fx-font-size: 11px; -fx-font-weight: 600;");
         }
     }
 
@@ -366,45 +409,51 @@ public class EvaluationBuilderController implements Initializable {
             }
         }
 
-        txtDesignation.setText(currentEvaluation.getDesignation());
-        txtDesignation.setDisable(isLocked);
-        if (comboType != null) {
-            comboType.setValue(currentEvaluation.getType() != null ? currentEvaluation.getType() : Evaluation.TYPE_CONTROLE_CONTINU);
-            comboType.setDisable(isLocked);
-        }
-        if (currentEvaluation.getDuration() != null) {
-            spinDuration.getValueFactory().setValue((int) currentEvaluation.getDuration().toMinutes());
-        }
-        spinDuration.setDisable(isLocked);
-        comboColumns.getSelectionModel().select(Integer.valueOf(currentEvaluation.getColumnCount()));
-        comboColumns.setDisable(isLocked);
-        chkShuffleQuestions.setSelected(currentEvaluation.isQuestionShuffle());
-        chkShuffleQuestions.setDisable(isLocked);
-        chkShuffleAnswers.setSelected(currentEvaluation.isAnswersShuffle());
-        chkShuffleAnswers.setDisable(isLocked);
-        chkDoubleSided.setSelected(currentEvaluation.isDoubleSided());
-        chkDoubleSided.setDisable(isLocked);
+        isUpdatingUi = true;
+        try {
+            txtDesignation.setText(currentEvaluation.getDesignation());
+            txtDesignation.setDisable(isLocked);
+            if (comboType != null) {
+                comboType.setValue(currentEvaluation.getType() != null ? currentEvaluation.getType() : Evaluation.TYPE_CONTROLE_CONTINU);
+                comboType.setDisable(isLocked);
+            }
+            if (currentEvaluation.getDuration() != null) {
+                spinDuration.getValueFactory().setValue((int) currentEvaluation.getDuration().toMinutes());
+            }
+            spinDuration.setDisable(isLocked);
+            comboColumns.getSelectionModel().select(Integer.valueOf(currentEvaluation.getColumnCount()));
+            comboColumns.setDisable(isLocked);
+            chkShuffleQuestions.setSelected(currentEvaluation.isQuestionShuffle());
+            chkShuffleQuestions.setDisable(isLocked);
+            chkShuffleAnswers.setSelected(currentEvaluation.isAnswersShuffle());
+            chkShuffleAnswers.setDisable(isLocked);
+            chkDoubleSided.setSelected(currentEvaluation.isDoubleSided());
+            chkDoubleSided.setDisable(isLocked);
 
-        txtScoreCorrect.setText(String.valueOf(currentEvaluation.getDefaultScoreIfCorrect()));
-        txtScoreCorrect.setDisable(isLocked);
-        txtScoreEmpty.setText(String.valueOf(currentEvaluation.getDefaultScoreIfEmpty()));
-        txtScoreEmpty.setDisable(isLocked);
-        txtScoreIncorrect.setText(String.valueOf(currentEvaluation.getDefaultScoreIfIncorrect()));
-        txtScoreIncorrect.setDisable(isLocked);
+            txtScoreCorrect.setText(String.valueOf(currentEvaluation.getDefaultScoreIfCorrect()));
+            txtScoreCorrect.setDisable(isLocked);
+            txtScoreEmpty.setText(String.valueOf(currentEvaluation.getDefaultScoreIfEmpty()));
+            txtScoreEmpty.setDisable(isLocked);
+            txtScoreIncorrect.setText(String.valueOf(currentEvaluation.getDefaultScoreIfIncorrect()));
+            txtScoreIncorrect.setDisable(isLocked);
 
-        if (btnAddQuestion != null) btnAddQuestion.setDisable(isLocked);
-        if (btnImportExcel != null) btnImportExcel.setDisable(isLocked);
-        if (btnSave != null) btnSave.setDisable(isLocked);
-        if (btnGeneratePdf != null) btnGeneratePdf.setDisable(isLocked);
-        if (progressBox != null) {
-            progressBox.setVisible(false);
-            progressBox.setManaged(false);
+            if (btnAddQuestion != null) btnAddQuestion.setDisable(isLocked);
+            if (btnImportExcel != null) btnImportExcel.setDisable(isLocked);
+            if (btnGeneratePdf != null) btnGeneratePdf.setDisable(isLocked);
+            if (progressBox != null) {
+                progressBox.setVisible(false);
+                progressBox.setManaged(false);
+            }
+
+            questionsList.setAll(currentEvaluation.getQuestions());
+            recalculateTotalPoints();
+        } finally {
+            isUpdatingUi = false;
         }
 
-        questionsList.setAll(currentEvaluation.getQuestions());
-        recalculateTotalPoints();
         if (lblSaveStatus != null) {
-            lblSaveStatus.setText("");
+            lblSaveStatus.setText(isLocked ? "" : "✓ Enregistré");
+            lblSaveStatus.setStyle("-fx-text-fill: #1b8744; -fx-font-weight: 600; -fx-font-size: 11px;");
         }
     }
 
@@ -415,15 +464,24 @@ public class EvaluationBuilderController implements Initializable {
             return;
         }
 
-        currentEvaluation.setDesignation(txtDesignation.getText().trim());
+        String des = txtDesignation.getText() != null ? txtDesignation.getText().trim() : "";
+        currentEvaluation.setDesignation(des);
+        if (lblTitle != null && !des.isEmpty()) {
+            lblTitle.setText("Concepteur d'Évaluation : " + des);
+        }
+
         if (comboType != null && comboType.getValue() != null) {
             currentEvaluation.setType(comboType.getValue());
         }
-        currentEvaluation.setDuration(Duration.ofMinutes(spinDuration.getValue()));
-        currentEvaluation.setColumnCount(comboColumns.getValue());
-        currentEvaluation.setQuestionShuffle(chkShuffleQuestions.isSelected());
-        currentEvaluation.setAnswersShuffle(chkShuffleAnswers.isSelected());
-        currentEvaluation.setDoubleSided(chkDoubleSided.isSelected());
+        if (spinDuration != null && spinDuration.getValue() != null) {
+            currentEvaluation.setDuration(Duration.ofMinutes(spinDuration.getValue()));
+        }
+        if (comboColumns != null && comboColumns.getValue() != null) {
+            currentEvaluation.setColumnCount(comboColumns.getValue());
+        }
+        if (chkShuffleQuestions != null) currentEvaluation.setQuestionShuffle(chkShuffleQuestions.isSelected());
+        if (chkShuffleAnswers != null) currentEvaluation.setAnswersShuffle(chkShuffleAnswers.isSelected());
+        if (chkDoubleSided != null) currentEvaluation.setDoubleSided(chkDoubleSided.isSelected());
 
         try {
             String sc = txtScoreCorrect.getText() != null ? txtScoreCorrect.getText().trim().replace(',', '.') : "1.0";
@@ -437,6 +495,9 @@ public class EvaluationBuilderController implements Initializable {
 
         currentEvaluation.setQuestions(new ArrayList<>(questionsList));
         evaluationService.saveEvaluation(currentEvaluation);
+        if (mainLayoutController != null) {
+            mainLayoutController.setActiveEvaluation(currentEvaluation);
+        }
         if (lblSaveStatus != null) {
             lblSaveStatus.setText("✓ Enregistré à " + java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")));
             lblSaveStatus.setStyle("-fx-text-fill: #1b8744; -fx-font-weight: 600; -fx-font-size: 11px;");
@@ -449,11 +510,8 @@ public class EvaluationBuilderController implements Initializable {
             notificationService.showWarning("Modification impossible", "Cette évaluation est verrouillée (statut " + currentEvaluation.getState() + ") et ne peut plus être modifiée.");
             return;
         }
+        flushAutoSave();
         saveEvaluationData();
-        if (currentEvaluation != null) {
-            mainLayoutController.setActiveEvaluation(currentEvaluation);
-            mainLayoutController.setStatus("Évaluation « " + currentEvaluation.getDesignation() + " » enregistrée avec succès.");
-        }
     }
 
     @FXML
@@ -505,6 +563,12 @@ public class EvaluationBuilderController implements Initializable {
                 ButtonType btnCancel = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
 
                 alert.getButtonTypes().setAll(btnAppend, btnReplace, btnCancel);
+
+                javafx.scene.Node replaceNode = alert.getDialogPane().lookupButton(btnReplace);
+                if (replaceNode != null) {
+                    replaceNode.setStyle("-fx-background-color: #ba1a1a; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6px; -fx-cursor: hand;");
+                }
+
                 Optional<ButtonType> result = alert.showAndWait();
 
                 if (result.isEmpty() || result.get() == btnCancel) {
@@ -519,7 +583,7 @@ public class EvaluationBuilderController implements Initializable {
             }
 
             recalculateTotalPoints();
-            updateSaveStatusModified();
+            triggerInstantAutoSave();
             notificationService.showToast("Importation réussie : " + imported.size() + " question(s) importée(s) depuis Excel.", NotificationService.ToastType.SUCCESS);
         } catch (IllegalArgumentException ex) {
             log.warn("Validation échouée lors de l'import Excel des questions: {}", ex.getMessage());
@@ -856,7 +920,7 @@ public class EvaluationBuilderController implements Initializable {
             } else {
                 questionsList.add(q);
             }
-            updateSaveStatusModified();
+            triggerInstantAutoSave();
         });
     }
 
@@ -890,6 +954,7 @@ public class EvaluationBuilderController implements Initializable {
     @FXML
     public void onPreviewDraft() {
         if (currentEvaluation == null) return;
+        flushAutoSave();
         saveEvaluationData();
 
         Thread.startVirtualThread(() -> {
@@ -917,6 +982,7 @@ public class EvaluationBuilderController implements Initializable {
     @FXML
     public void onGeneratePdf() {
         if (currentEvaluation == null) return;
+        flushAutoSave();
 
         if (currentEvaluation.getState() != EvaluationState.CONCEPTION) {
             notificationService.showWarning("Déjà générée", "Cette évaluation a déjà été générée et se trouve en production.");
@@ -1012,6 +1078,7 @@ public class EvaluationBuilderController implements Initializable {
 
     @FXML
     public void onBack() {
+        flushAutoSave();
         if (mainLayoutController != null) {
             mainLayoutController.navigateBack();
         } else {

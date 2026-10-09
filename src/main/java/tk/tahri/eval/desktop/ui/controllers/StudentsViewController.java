@@ -6,6 +6,8 @@ import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
+import javafx.geometry.Side;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.FileChooser;
@@ -24,6 +26,7 @@ import java.io.File;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.ResourceBundle;
 
 @Component
@@ -34,23 +37,6 @@ public class StudentsViewController implements Initializable {
     @FXML private TextField searchField;
     @FXML private Button btnImportExcel;
     @FXML private Button btnNewStudent;
-
-    // Formulaire Inline
-    @FXML private VBox studentFormCard;
-    @FXML private FontIcon formIcon;
-    @FXML private Label lblFormTitle;
-    @FXML private Button btnCloseForm;
-    @FXML private TextField txtMatricule;
-    @FXML private TextField txtLastName;
-    @FXML private TextField txtFirstName;
-    @FXML private Label lblFormError;
-    @FXML private Button btnCancelForm;
-    @FXML private Button btnSaveStudent;
-
-    // Barre Confirmation Suppression Inline
-    @FXML private HBox deleteConfirmBox;
-    @FXML private Label lblConfirmDelete;
-    @FXML private Button btnConfirmDelete;
 
     // Notification Inline
     @FXML private HBox inlineNotificationBox;
@@ -78,8 +64,6 @@ public class StudentsViewController implements Initializable {
     private final ObservableList<Enrollment> studentList = FXCollections.observableArrayList();
     private final List<Enrollment> fullStudentList = new ArrayList<>();
     private Group currentGroup;
-    private String editingStudentId = null;
-    private Enrollment studentToDelete = null;
 
     public StudentsViewController(GroupService groupService,
                                   NotificationService notificationService,
@@ -132,48 +116,66 @@ public class StudentsViewController implements Initializable {
             }
         });
 
-        // Colonne Actions intégrée dans chaque ligne
+        // Colonne Actions intégrée dans chaque ligne avec menu kebab
         colActions.setCellFactory(col -> new TableCell<>() {
-            private final Button btnEdit = new Button();
-            private final Button btnDelete = new Button();
-            private final HBox pane = new HBox(8, btnEdit, btnDelete);
+            private final Button btnMenu = new Button();
 
             {
-                pane.setAlignment(Pos.CENTER);
+                btnMenu.getStyleClass().add("card-action-btn");
+                FontIcon kebabIcon = new FontIcon(Feather.MORE_VERTICAL);
+                kebabIcon.setIconSize(15);
+                btnMenu.setGraphic(kebabIcon);
+                btnMenu.setTooltip(new Tooltip("Actions"));
 
-                btnEdit.getStyleClass().add("card-action-btn");
-                FontIcon editIcon = new FontIcon(Feather.EDIT_2);
-                editIcon.setIconSize(13);
-                btnEdit.setGraphic(editIcon);
-                btnEdit.setTooltip(new Tooltip("Modifier cet étudiant"));
-                btnEdit.setOnAction(e -> {
-                    Enrollment item = getTableView().getItems().get(getIndex());
-                    if (item != null) {
-                        startEditStudent(item);
+                btnMenu.setOnMousePressed(e -> {
+                    int idx = getIndex();
+                    if (idx >= 0 && idx < getTableView().getItems().size()) {
+                        getTableView().getSelectionModel().select(idx);
                     }
                 });
 
-                btnDelete.getStyleClass().add("card-action-btn");
-                FontIcon trashIcon = new FontIcon(Feather.TRASH_2);
-                trashIcon.setIconColor(javafx.scene.paint.Color.web("#ba1a1a"));
-                trashIcon.setIconSize(13);
-                btnDelete.setGraphic(trashIcon);
-                btnDelete.setTooltip(new Tooltip("Retirer cet étudiant"));
-                btnDelete.setOnAction(e -> {
-                    Enrollment item = getTableView().getItems().get(getIndex());
-                    if (item != null) {
+                btnMenu.setOnAction(e -> {
+                    e.consume();
+                    int idx = getIndex();
+                    if (idx < 0 || idx >= getTableView().getItems().size()) return;
+                    getTableView().getSelectionModel().select(idx);
+                    Enrollment item = getTableView().getItems().get(idx);
+                    if (item == null) return;
+
+                    ContextMenu menu = new ContextMenu();
+
+                    MenuItem itemEdit = new MenuItem("Modifier l'étudiant");
+                    FontIcon editIcon = new FontIcon(Feather.EDIT_2);
+                    editIcon.setIconSize(13);
+                    itemEdit.setGraphic(editIcon);
+                    itemEdit.setOnAction(ev -> {
+                        ev.consume();
+                        startEditStudent(item);
+                    });
+
+                    MenuItem itemDelete = new MenuItem("Retirer l'étudiant");
+                    FontIcon trashIcon = new FontIcon(Feather.TRASH_2);
+                    trashIcon.setIconColor(javafx.scene.paint.Color.web("#ba1a1a"));
+                    trashIcon.setIconSize(13);
+                    itemDelete.setGraphic(trashIcon);
+                    itemDelete.setOnAction(ev -> {
+                        ev.consume();
                         askDeleteStudent(item);
-                    }
+                    });
+
+                    menu.getItems().addAll(itemEdit, itemDelete);
+                    menu.show(btnMenu, Side.BOTTOM, 0, 0);
                 });
             }
 
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty) {
+                if (empty || getIndex() < 0 || getIndex() >= getTableView().getItems().size()) {
                     setGraphic(null);
                 } else {
-                    setGraphic(pane);
+                    setGraphic(btnMenu);
+                    setAlignment(Pos.CENTER);
                 }
             }
         });
@@ -194,10 +196,14 @@ public class StudentsViewController implements Initializable {
 
     private void setupIcons() {
         if (btnNewStudent != null) btnNewStudent.setGraphic(new FontIcon(Feather.USER_PLUS));
-        if (btnImportExcel != null) btnImportExcel.setGraphic(new FontIcon(Feather.UPLOAD));
-        if (btnExportExcel != null) btnExportExcel.setGraphic(new FontIcon(Feather.DOWNLOAD));
-        if (btnSaveStudent != null) btnSaveStudent.setGraphic(new FontIcon(Feather.CHECK));
-        if (btnCloseForm != null) btnCloseForm.setGraphic(new FontIcon(Feather.X));
+        if (btnImportExcel != null) {
+            btnImportExcel.setGraphic(new FontIcon(Feather.UPLOAD));
+            btnImportExcel.setTooltip(new Tooltip("Importer des étudiants depuis un fichier Excel (.xlsx)"));
+        }
+        if (btnExportExcel != null) {
+            btnExportExcel.setGraphic(new FontIcon(Feather.DOWNLOAD));
+            btnExportExcel.setTooltip(new Tooltip("Exporter la liste des étudiants en fichier Excel (.xlsx)"));
+        }
     }
 
     private void setupListeners() {
@@ -208,8 +214,6 @@ public class StudentsViewController implements Initializable {
 
     public void setGroup(Group group) {
         this.currentGroup = group;
-        onCancelForm();
-        onCancelDelete();
         if (group != null) {
             loadStudents(group.getId());
         } else {
@@ -280,6 +284,9 @@ public class StudentsViewController implements Initializable {
         if (lblHeaderStudentCount != null) {
             lblHeaderStudentCount.setText(text);
         }
+        if (btnExportExcel != null) {
+            btnExportExcel.setDisable(count == 0);
+        }
     }
 
     @FXML
@@ -288,107 +295,123 @@ public class StudentsViewController implements Initializable {
             showInlineNotification("Veuillez sélectionner un groupe d'abord.", true);
             return;
         }
-        editingStudentId = null;
-        lblFormTitle.setText("Ajouter un nouvel étudiant");
-        formIcon.setIconLiteral("fth-user-plus");
-        txtMatricule.clear();
-        txtLastName.clear();
-        txtFirstName.clear();
-        lblFormError.setVisible(false);
-
-        studentFormCard.setVisible(true);
-        studentFormCard.setManaged(true);
-        onCancelDelete();
-        Platform.runLater(() -> txtMatricule.requestFocus());
+        showStudentDialog(null);
     }
 
     public void startEditStudent(Enrollment selected) {
         if (selected == null) return;
-
-        editingStudentId = selected.getId();
-        lblFormTitle.setText("Modifier l'étudiant : " + selected.fullName());
-        formIcon.setIconLiteral("fth-edit-2");
-        txtMatricule.setText(selected.getMatriculation() != null ? selected.getMatriculation() : "");
-        txtLastName.setText(selected.getLastName() != null ? selected.getLastName() : "");
-        txtFirstName.setText(selected.getFirstName() != null ? selected.getFirstName() : "");
-        lblFormError.setVisible(false);
-
-        studentFormCard.setVisible(true);
-        studentFormCard.setManaged(true);
-        onCancelDelete();
-        Platform.runLater(() -> txtLastName.requestFocus());
+        showStudentDialog(selected);
     }
 
-    @FXML
-    public void onSaveStudent() {
-        if (currentGroup == null) return;
-
-        String mat = txtMatricule.getText() != null ? txtMatricule.getText().trim() : "";
-        String nom = txtLastName.getText() != null ? txtLastName.getText().trim() : "";
-        String prenom = txtFirstName.getText() != null ? txtFirstName.getText().trim() : "";
-
-        if (mat.isEmpty() || nom.isEmpty()) {
-            lblFormError.setText("Le matricule et le nom de famille sont obligatoires.");
-            lblFormError.setVisible(true);
+    private void showStudentDialog(Enrollment existing) {
+        if (currentGroup == null) {
+            showInlineNotification("Veuillez sélectionner un groupe d'abord.", true);
             return;
         }
 
-        try {
-            if (editingStudentId == null) {
-                groupService.addStudent(currentGroup.getId(), mat, prenom, nom);
-                showInlineNotification("Étudiant « " + nom + " " + prenom + " » ajouté avec succès.", false);
-            } else {
-                groupService.updateStudent(editingStudentId, mat, prenom, nom);
-                showInlineNotification("Coordonnées de l'étudiant mises à jour avec succès.", false);
-            }
-            onCancelForm();
-            loadStudents(currentGroup.getId());
-        } catch (Exception ex) {
-            log.error("Erreur lors de l'enregistrement de l'étudiant", ex);
-            lblFormError.setText(ex.getMessage());
-            lblFormError.setVisible(true);
-        }
-    }
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle(existing == null ? "Nouvel étudiant" : "Modifier l'étudiant");
+        dialog.setHeaderText(existing == null
+                ? "Ajoutez un étudiant au groupe « " + currentGroup.getName() + " »"
+                : "Modifier les informations de l'étudiant");
 
-    @FXML
-    public void onCancelForm() {
-        editingStudentId = null;
-        if (studentFormCard != null) {
-            studentFormCard.setVisible(false);
-            studentFormCard.setManaged(false);
+        ButtonType btnSaveType = new ButtonType(existing == null ? "Ajouter l'étudiant" : "Enregistrer", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(btnSaveType, ButtonType.CANCEL);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(14);
+        grid.setVgap(14);
+        grid.setStyle("-fx-padding: 20;");
+        grid.setPrefWidth(480);
+
+        TextField txtMat = new TextField(existing != null && existing.getMatriculation() != null ? existing.getMatriculation() : "");
+        txtMat.setPromptText("Ex : ETU123456");
+        txtMat.setStyle("-fx-background-radius: 6px; -fx-padding: 8;");
+
+        TextField txtNom = new TextField(existing != null && existing.getLastName() != null ? existing.getLastName() : "");
+        txtNom.setPromptText("Ex : ALAMI");
+        txtNom.setStyle("-fx-background-radius: 6px; -fx-padding: 8;");
+
+        TextField txtPrenom = new TextField(existing != null && existing.getFirstName() != null ? existing.getFirstName() : "");
+        txtPrenom.setPromptText("Ex : Mohammed");
+        txtPrenom.setStyle("-fx-background-radius: 6px; -fx-padding: 8;");
+
+        grid.add(new Label("Matricule / Code * :"), 0, 0); grid.add(txtMat, 1, 0);
+        grid.add(new Label("Nom de famille * :"), 0, 1);    grid.add(txtNom, 1, 1);
+        grid.add(new Label("Prénom :"), 0, 2);             grid.add(txtPrenom, 1, 2);
+
+        ColumnConstraints col1 = new ColumnConstraints();
+        col1.setMinWidth(140);
+        ColumnConstraints col2 = new ColumnConstraints();
+        col2.setHgrow(Priority.ALWAYS);
+        grid.getColumnConstraints().addAll(col1, col2);
+
+        dialog.getDialogPane().setContent(grid);
+
+        // Validation dynamique : désactiver le bouton d'enregistrement si Matricule ou Nom est vide
+        Node saveBtn = dialog.getDialogPane().lookupButton(btnSaveType);
+        if (saveBtn != null) {
+            Runnable checkValid = () -> {
+                boolean valid = !txtMat.getText().trim().isEmpty() && !txtNom.getText().trim().isEmpty();
+                saveBtn.setDisable(!valid);
+            };
+            txtMat.textProperty().addListener((obs, oldV, newV) -> checkValid.run());
+            txtNom.textProperty().addListener((obs, oldV, newV) -> checkValid.run());
+            checkValid.run();
         }
-        if (lblFormError != null) {
-            lblFormError.setVisible(false);
+
+        Platform.runLater(() -> {
+            if (existing == null) {
+                txtMat.requestFocus();
+            } else {
+                txtNom.requestFocus();
+            }
+        });
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent() && result.get() == btnSaveType) {
+            String matricule = txtMat.getText().trim();
+            String nom = txtNom.getText().trim();
+            String prenom = txtPrenom.getText().trim();
+
+            if (matricule.isEmpty() || nom.isEmpty()) {
+                notificationService.showWarning("Champ requis", "Le matricule et le nom de famille sont obligatoires.");
+                return;
+            }
+
+            try {
+                if (existing == null) {
+                    groupService.addStudent(currentGroup.getId(), matricule, prenom, nom);
+                    showInlineNotification("Étudiant « " + nom + " " + prenom + " » ajouté avec succès.", false);
+                } else {
+                    groupService.updateStudent(existing.getId(), matricule, prenom, nom);
+                    showInlineNotification("Coordonnées de l'étudiant « " + nom + " " + prenom + " » mises à jour avec succès.", false);
+                }
+                loadStudents(currentGroup.getId());
+            } catch (Exception ex) {
+                log.error("Erreur lors de l'enregistrement de l'étudiant", ex);
+                notificationService.showError("Erreur", "Impossible d'enregistrer l'étudiant : " + ex.getMessage());
+            }
         }
     }
 
     public void askDeleteStudent(Enrollment selected) {
-        if (selected == null) return;
-        studentToDelete = selected;
-        lblConfirmDelete.setText("Voulez-vous vraiment retirer « " + selected.fullName() + " » de ce groupe ?");
-        deleteConfirmBox.setVisible(true);
-        deleteConfirmBox.setManaged(true);
-        onCancelForm();
-    }
-
-    @FXML
-    public void onConfirmDelete() {
-        if (studentToDelete != null && currentGroup != null) {
-            String name = studentToDelete.fullName();
-            groupService.removeStudent(studentToDelete.getId());
-            showInlineNotification("L'étudiant « " + name + " » a été retiré du groupe.", false);
-            studentToDelete = null;
-            onCancelDelete();
-            loadStudents(currentGroup.getId());
-        }
-    }
-
-    @FXML
-    public void onCancelDelete() {
-        studentToDelete = null;
-        if (deleteConfirmBox != null) {
-            deleteConfirmBox.setVisible(false);
-            deleteConfirmBox.setManaged(false);
+        if (selected == null || currentGroup == null) return;
+        boolean confirmed = notificationService.confirm(
+                "Supprimer l'étudiant",
+                "Confirmation de suppression",
+                "Êtes-vous sûr de vouloir retirer « " + selected.fullName() + " » de ce groupe ?"
+        );
+        if (confirmed) {
+            try {
+                String name = selected.fullName();
+                groupService.removeStudent(selected.getId());
+                showInlineNotification("L'étudiant « " + name + " » a été retiré du groupe.", false);
+                loadStudents(currentGroup.getId());
+            } catch (Exception ex) {
+                log.error("Erreur lors de la suppression de l'étudiant", ex);
+                notificationService.showError("Erreur", "Impossible de retirer l'étudiant : " + ex.getMessage());
+            }
         }
     }
 

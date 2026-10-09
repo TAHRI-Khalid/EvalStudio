@@ -167,4 +167,42 @@ public class EvaluationService {
         evaluation.setState(state);
         return evaluationRepository.save(evaluation);
     }
+
+    @Transactional
+    public Evaluation resetToConception(String evaluationId) {
+        log.info("Réinitialisation en mode conception de l'évaluation {}", evaluationId);
+        Evaluation evaluation = getEvaluation(evaluationId);
+        if (evaluation.getState() == EvaluationState.CONCEPTION) {
+            return evaluation;
+        }
+
+        // 1. Suppression des copies / blueprints générés en base
+        try {
+            blueprintPaperAssessmentRepository.deleteByEvaluationId(evaluationId);
+        } catch (Exception e) {
+            log.warn("Erreur lors de la suppression des blueprints pour l'évaluation {}", evaluationId, e);
+        }
+
+        // 2. Suppression des pages non corrigées en base
+        try {
+            uncorrectedPageRepository.deleteByEvaluationId(evaluationId);
+        } catch (Exception e) {
+            log.warn("Erreur lors de la suppression des pages non corrigées pour l'évaluation {}", evaluationId, e);
+        }
+
+        // 3. Suppression des fichiers et dossiers de production sur le disque
+        try {
+            Path evalDir = Path.of(uploadDirPath, "evaluations", evaluationId);
+            if (Files.exists(evalDir)) {
+                FileUtils.deleteDirectory(evalDir.toFile());
+                log.info("Répertoire des artefacts de production supprimé : {}", evalDir.toAbsolutePath());
+            }
+        } catch (Exception e) {
+            log.warn("Impossible de supprimer le répertoire des artefacts pour l'évaluation {}", evaluationId, e);
+        }
+
+        // 4. Réinitialisation de l'état
+        evaluation.setState(EvaluationState.CONCEPTION);
+        return evaluationRepository.save(evaluation);
+    }
 }

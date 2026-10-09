@@ -151,7 +151,7 @@ public class GroupWorkspaceViewController implements Initializable {
 
     public void selectGroupAndEvaluation(Group group, String evalId) {
         setGroup(group);
-        selectTab(2); // Onglet Correction & Scanner
+        selectTab(2); // Onglet Correction & Résultats
         if (correctionController != null) {
             correctionController.selectGroupAndEvaluation(group != null ? group.getId() : null, evalId);
         }

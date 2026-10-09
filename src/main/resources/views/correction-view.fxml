@@ -13,7 +13,7 @@
     <VBox fx:id="evalSelectionView" spacing="14" VBox.vgrow="ALWAYS" maxHeight="Infinity">
         <HBox alignment="CENTER_LEFT" spacing="16" styleClass="view-header">
             <VBox HBox.hgrow="ALWAYS" spacing="2">
-                <Label text="Correction &amp; Scanner OMR" styleClass="page-title"/>
+                <Label text="Correction &amp; Résultats" styleClass="page-title"/>
                 <Label text="Épreuves prêtes pour impression • Cliquez sur une épreuve pour afficher son tableau de bord" styleClass="page-subtitle"/>
             </VBox>
             <Button fx:id="btnOpenPdfFromList" text="Voir le PDF généré" disable="true" onAction="#onOpenPdfFromList"/>
@@ -45,10 +45,17 @@
     <!-- 2. Vue Tableau de bord de l'évaluation -->
     <VBox fx:id="dashboardView" spacing="12" VBox.vgrow="ALWAYS" maxHeight="Infinity" visible="false" managed="false">
         <!-- Barre de navigation supérieure et infos de l'épreuve active -->
-        <HBox alignment="CENTER_LEFT" spacing="12" styleClass="view-header" style="-fx-padding: 4 0 8 0;">
-            <Label fx:id="lblActiveEvalTitle" text="Tableau de bord de l'évaluation" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #181c20;"/>
-            <Label fx:id="lblActiveEvalState" styleClass="tag-badge"/>
-            <Pane HBox.hgrow="ALWAYS"/>
+        <HBox alignment="CENTER_LEFT" spacing="16" styleClass="view-header">
+            <VBox HBox.hgrow="ALWAYS" spacing="2">
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <Label fx:id="lblActiveEvalTitle" text="Correction &amp; Résultats" styleClass="page-title"/>
+                    <Label fx:id="lblActiveEvalState" styleClass="tag-badge"
+                           style="-fx-font-size: 11px; -fx-font-weight: 600;"/>
+                </HBox>
+                <Label fx:id="lblActiveEvalSubtitle" text="Tableau de bord de l'évaluation • Notes, copies corrigées et analyse statistique" styleClass="page-subtitle"/>
+            </VBox>
+            <Button fx:id="btnResetToConception" text="Retourner en conception" onAction="#onResetToConception"
+                    style="-fx-text-fill: #ba1a1a; -fx-font-weight: 600;" styleClass="card-action-btn"/>
             <Button fx:id="btnOpenPdfFromDashboard" text="Voir le PDF généré" onAction="#onOpenGeneratedPdf"/>
             <Button fx:id="btnStartCorrection" text="Scanner et corriger..." styleClass="btn-primary" onAction="#onStartCorrection"/>
         </HBox>
@@ -98,15 +105,9 @@
                         <HBox alignment="CENTER_LEFT" spacing="10">
                             <Label text="Tableau de bord des notes" style="-fx-font-weight: bold; -fx-font-size: 15px; -fx-text-fill: -color-fg-default;"/>
                             <TextField fx:id="txtSearchGrade" promptText="Filtrer par nom, matricule..." prefWidth="220" styleClass="search-field"/>
-                            <HBox spacing="4" alignment="CENTER_LEFT">
-                                <Button fx:id="btnFilterAll" text="Tous" onAction="#onFilterAll" styleClass="card-action-btn"/>
-                                <Button fx:id="btnFilterPassed" text="Admis (≥10)" onAction="#onFilterPassed" styleClass="card-action-btn"/>
-                                <Button fx:id="btnFilterFailed" text="Ajournés (&lt;10)" onAction="#onFilterFailed" styleClass="card-action-btn"/>
-                            </HBox>
                             <Pane HBox.hgrow="ALWAYS"/>
-                            <Button fx:id="btnViewStudentCopy" text="Voir Copie" disable="true" onAction="#onViewStudentCopy"/>
-                            <Button fx:id="btnExportExcel" text="Excel (.xlsx)" disable="true" onAction="#onExportExcel"/>
-                            <Button fx:id="btnExportPdfReport" text="PV Notes" disable="true" onAction="#onExportPdfReport"/>
+                            <Button fx:id="btnExportExcel" text="PV de Notes (.xlsx)" disable="true" onAction="#onExportExcel"/>
+                            <Button fx:id="btnExportPdfReport" text="PV de Notes (.pdf)" disable="true" onAction="#onExportPdfReport"/>
                             <Button fx:id="btnViewAnnotatedPdf" text="Toutes Copies" disable="true" onAction="#onViewAnnotatedPdf"/>
                         </HBox>
 

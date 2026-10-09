@@ -20,7 +20,6 @@
                 </HBox>
                 <Label text="Gérez vos groupes, vos évaluations et vos étudiants • Cliquez sur une carte pour accéder au contenu" styleClass="page-subtitle"/>
             </VBox>
-            <TextField fx:id="searchField" promptText="Rechercher par nom, filière, établissement..." prefWidth="280" styleClass="search-field"/>
             <Button fx:id="btnNewGroup" text="Nouveau groupe" styleClass="btn-primary" onAction="#onNewGroup"/>
         </HBox>
 

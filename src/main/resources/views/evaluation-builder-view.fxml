@@ -18,7 +18,6 @@
         <Label fx:id="lblTotalPoints" text="Total : 0.00 pts" styleClass="tag-badge" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-background-color: -color-accent-subtle; -fx-text-fill: -color-accent-emphasis;"/>
         <Button fx:id="btnAddQuestion" text="Ajouter une question" onAction="#onAddQuestion"/>
         <Button fx:id="btnPreviewDraft" text="Aperçu Brouillon PDF" onAction="#onPreviewDraft"/>
-        <Button fx:id="btnSave" text="Enregistrer" onAction="#onSave"/>
         <Button fx:id="btnGeneratePdf" text="Générer les copies PDF" styleClass="btn-primary" onAction="#onGeneratePdf"/>
     </HBox>
 

@@ -20,52 +20,7 @@
             <Label text="Gérez les listes d'étudiants inscrits, importez vos listes Excel et gérez les matricules • Double-cliquez pour modifier" styleClass="page-subtitle"/>
         </VBox>
         <TextField fx:id="searchField" promptText="Filtrer les étudiants..." prefWidth="240" styleClass="search-field"/>
-        <Button fx:id="btnImportExcel" text="Importer Excel (.xlsx)" styleClass="card-action-btn" onAction="#onImportExcel"/>
         <Button fx:id="btnNewStudent" text="Nouvel étudiant" styleClass="btn-primary" onAction="#onNewStudent"/>
-    </HBox>
-
-    <!-- Formulaire INLINE (aucune fenêtre modale) pour création / modification d'étudiant -->
-    <VBox fx:id="studentFormCard" spacing="12" visible="false" managed="false"
-          style="-fx-background-color: #f7f9ff; -fx-border-color: #c2c6d5; -fx-border-radius: 10px; -fx-background-radius: 10px; -fx-padding: 18;">
-        <HBox alignment="CENTER_LEFT" spacing="10">
-            <FontIcon fx:id="formIcon" iconLiteral="fth-user-plus" iconSize="16" iconColor="#004faa"/>
-            <Label fx:id="lblFormTitle" text="Ajouter un étudiant" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #181c20;"/>
-            <Pane HBox.hgrow="ALWAYS"/>
-            <Button fx:id="btnCloseForm" styleClass="card-action-btn" onAction="#onCancelForm"/>
-        </HBox>
-        <GridPane hgap="16" vgap="10">
-            <VBox spacing="4" GridPane.columnIndex="0" HBox.hgrow="ALWAYS">
-                <Label text="Matricule / Code étudiant *" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #181c20;"/>
-                <TextField fx:id="txtMatricule" promptText="Ex: 2024001"/>
-            </VBox>
-            <VBox spacing="4" GridPane.columnIndex="1" HBox.hgrow="ALWAYS">
-                <Label text="Nom de famille *" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #181c20;"/>
-                <TextField fx:id="txtLastName" promptText="Ex: Dupont"/>
-            </VBox>
-            <VBox spacing="4" GridPane.columnIndex="2" HBox.hgrow="ALWAYS">
-                <Label text="Prénom" style="-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #181c20;"/>
-                <TextField fx:id="txtFirstName" promptText="Ex: Jean"/>
-            </VBox>
-        </GridPane>
-        <HBox alignment="CENTER_LEFT" spacing="10">
-            <Label fx:id="lblFormError" text="" visible="false" style="-fx-text-fill: #ba1a1a; -fx-font-size: 12px; -fx-font-weight: 600;"/>
-            <Pane HBox.hgrow="ALWAYS"/>
-            <Button fx:id="btnCancelForm" text="Annuler" onAction="#onCancelForm"/>
-            <Button fx:id="btnSaveStudent" text="Enregistrer l'étudiant" styleClass="btn-primary" onAction="#onSaveStudent"/>
-        </HBox>
-    </VBox>
-
-    <!-- Barre de confirmation de suppression INLINE (sans fenêtre modale) -->
-    <HBox fx:id="deleteConfirmBox" alignment="CENTER_LEFT" spacing="12" visible="false" managed="false"
-          style="-fx-background-color: #ffdad6; -fx-background-radius: 8px; -fx-padding: 10 16;">
-        <FontIcon iconLiteral="fth-alert-triangle" iconSize="16" iconColor="#ba1a1a"/>
-        <Label fx:id="lblConfirmDelete" text="Êtes-vous sûr de vouloir retirer cet étudiant du groupe ?"
-               style="-fx-text-fill: #410002; -fx-font-weight: 600; -fx-font-size: 13px;"/>
-        <Pane HBox.hgrow="ALWAYS"/>
-        <Button text="Annuler" onAction="#onCancelDelete"/>
-        <Button fx:id="btnConfirmDelete" text="Oui, retirer"
-                style="-fx-background-color: #ba1a1a; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6px; -fx-padding: 6 14;"
-                onAction="#onConfirmDelete"/>
     </HBox>
 
     <!-- Notification inline pour messages d'état (import Excel, succès, etc.) -->
@@ -77,11 +32,12 @@
         <Button text="×" onAction="#hideInlineNotification" style="-fx-background-color: transparent; -fx-font-size: 14px; -fx-cursor: hand; -fx-font-weight: bold;"/>
     </HBox>
 
-    <!-- Barre d'informations et export -->
+    <!-- Barre d'actions et informations de la liste (juste au-dessus du tableau) -->
     <HBox alignment="CENTER_LEFT" spacing="10">
         <Label fx:id="lblStudentCount" text="0 étudiant(s) inscrit(s)" style="-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #424753;"/>
         <Pane HBox.hgrow="ALWAYS"/>
-        <Button fx:id="btnExportExcel" text="Exporter la liste (.xlsx)" onAction="#onExportExcel"/>
+        <Button fx:id="btnImportExcel" text="Importer Excel" styleClass="card-action-btn" onAction="#onImportExcel"/>
+        <Button fx:id="btnExportExcel" text="Exporter Excel" styleClass="card-action-btn" onAction="#onExportExcel"/>
     </HBox>
 
     <!-- Tableau des Étudiants prenant tout l'espace disponible -->
@@ -92,7 +48,7 @@
             <TableColumn fx:id="colFirstName" text="Prénom" prefWidth="200" minWidth="140"/>
             <TableColumn fx:id="colFullName" text="Nom complet" prefWidth="250" minWidth="160"/>
             <TableColumn fx:id="colRole" text="Statut" prefWidth="120" minWidth="100" maxWidth="150"/>
-            <TableColumn fx:id="colActions" text="Actions" prefWidth="120" minWidth="110" maxWidth="140" style="-fx-alignment: CENTER;"/>
+            <TableColumn fx:id="colActions" text="Actions" prefWidth="70" minWidth="60" maxWidth="90" style="-fx-alignment: CENTER;"/>
         </columns>
         <columnResizePolicy>
             <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>

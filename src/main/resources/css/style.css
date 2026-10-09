@@ -362,6 +362,40 @@
     -fx-text-fill: -color-fg-emphasis;
 }
 
+/* Boutons Danger (Suppression / Actions destructives) */
+.btn-danger, .button.btn-danger {
+    -fx-background-color: #ba1a1a;
+    -fx-text-fill: white;
+    -fx-font-weight: 600;
+    -fx-background-radius: 8px;
+    -fx-padding: 8 16 8 16;
+    -fx-cursor: hand;
+}
+
+.btn-danger .text,
+.button.btn-danger .text {
+    -fx-fill: white;
+}
+
+.btn-danger .ikonli-font-icon,
+.button.btn-danger .ikonli-font-icon {
+    -fx-icon-color: white;
+    -fx-fill: white;
+}
+
+.btn-danger:hover, .button.btn-danger:hover {
+    -fx-background-color: #931212;
+}
+
+.btn-danger:pressed, .button.btn-danger:pressed {
+    -fx-background-color: #6e0b0b;
+}
+
+.btn-danger:disabled, .button.btn-danger:disabled {
+    -fx-opacity: 0.55;
+    -fx-text-fill: white;
+}
+
 /* Tableaux Modernes */
 .table-view {
     -fx-background-color: -color-bg-default;

@@ -7,6 +7,7 @@ import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
+import javafx.geometry.Side;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
@@ -164,82 +165,102 @@ public class EvaluationsViewController implements Initializable {
             return new javafx.beans.property.SimpleObjectProperty<>(count);
         });
 
-        // Colonne Actions intégrée dans chaque ligne
+        // Colonne Actions intégrée dans chaque ligne avec menu kebab
         colActions.setCellFactory(col -> new TableCell<>() {
-            private final Button btnEdit = new Button("Éditer");
-            private final Button btnDelete = new Button();
-            private final HBox pane = new HBox(8, btnEdit, btnDelete);
+            private final Button btnMenu = new Button();
 
             {
-                pane.setAlignment(Pos.CENTER);
+                btnMenu.getStyleClass().add("card-action-btn");
+                FontIcon kebabIcon = new FontIcon(Feather.MORE_VERTICAL);
+                kebabIcon.setIconSize(15);
+                btnMenu.setGraphic(kebabIcon);
+                btnMenu.setTooltip(new Tooltip("Actions de l'évaluation"));
 
-                btnEdit.getStyleClass().add("card-action-btn");
-                btnEdit.setStyle("-fx-text-fill: #004faa; -fx-font-weight: bold;");
-                FontIcon editIcon = new FontIcon(Feather.EDIT_3);
-                editIcon.setIconSize(13);
-                btnEdit.setGraphic(editIcon);
-                btnEdit.setOnAction(e -> {
-                    Evaluation item = getTableView().getItems().get(getIndex());
-                    if (item != null) {
-                        if (item.getState() == EvaluationState.CONCEPTION) {
-                            mainLayoutController.openEvaluationBuilder(item.getId());
-                        } else {
-                            notificationService.showWarning(
-                                    "Modification impossible",
-                                    "Cette évaluation a déjà été imprimée ou archivée. Ses questions et paramètres ne peuvent plus être modifiés."
-                            );
-                        }
+                btnMenu.setOnMousePressed(e -> {
+                    int idx = getIndex();
+                    if (idx >= 0 && idx < getTableView().getItems().size()) {
+                        getTableView().getSelectionModel().select(idx);
                     }
                 });
 
-                btnDelete.getStyleClass().add("card-action-btn");
-                FontIcon trashIcon = new FontIcon(Feather.TRASH_2);
-                trashIcon.setIconColor(javafx.scene.paint.Color.web("#ba1a1a"));
-                trashIcon.setIconSize(13);
-                btnDelete.setGraphic(trashIcon);
-                btnDelete.setTooltip(new Tooltip("Supprimer l'évaluation"));
-                btnDelete.setOnAction(e -> {
-                    Evaluation item = getTableView().getItems().get(getIndex());
-                    if (item != null) {
-                        deleteEvaluation(item);
+                btnMenu.setOnAction(e -> {
+                    e.consume();
+                    int idx = getIndex();
+                    if (idx < 0 || idx >= getTableView().getItems().size()) return;
+                    getTableView().getSelectionModel().select(idx);
+                    Evaluation item = getTableView().getItems().get(idx);
+                    if (item == null) return;
+
+                    ContextMenu menu = new ContextMenu();
+
+                    if (item.getState() == EvaluationState.CONCEPTION) {
+                        MenuItem itemEdit = new MenuItem("Concevoir / Éditer les questions");
+                        FontIcon editIcon = new FontIcon(Feather.EDIT_3);
+                        editIcon.setIconSize(13);
+                        itemEdit.setGraphic(editIcon);
+                        itemEdit.setOnAction(ev -> {
+                            ev.consume();
+                            mainLayoutController.openEvaluationBuilder(item.getId());
+                        });
+                        menu.getItems().add(itemEdit);
+                    } else {
+                        MenuItem itemView = new MenuItem("Consulter le sujet (lecture seule)");
+                        FontIcon viewIcon = new FontIcon(Feather.EYE);
+                        viewIcon.setIconSize(13);
+                        itemView.setGraphic(viewIcon);
+                        itemView.setOnAction(ev -> {
+                            ev.consume();
+                            mainLayoutController.openEvaluationBuilder(item.getId());
+                        });
+
+                        MenuItem itemReset = new MenuItem("Retourner en mode conception");
+                        FontIcon resetIcon = new FontIcon(Feather.ROTATE_CCW);
+                        resetIcon.setIconSize(13);
+                        resetIcon.setIconColor(javafx.scene.paint.Color.web("#ba1a1a"));
+                        itemReset.setGraphic(resetIcon);
+                        itemReset.setOnAction(ev -> {
+                            ev.consume();
+                            resetEvaluationToConception(item);
+                        });
+
+                        menu.getItems().addAll(itemView, itemReset);
                     }
+
+                    MenuItem itemDelete = new MenuItem("Supprimer l'évaluation");
+                    FontIcon trashIcon = new FontIcon(Feather.TRASH_2);
+                    trashIcon.setIconColor(javafx.scene.paint.Color.web("#ba1a1a"));
+                    trashIcon.setIconSize(13);
+                    itemDelete.setGraphic(trashIcon);
+                    itemDelete.setOnAction(ev -> {
+                        ev.consume();
+                        deleteEvaluation(item);
+                    });
+
+                    menu.getItems().add(itemDelete);
+                    menu.show(btnMenu, Side.BOTTOM, 0, 0);
                 });
             }
 
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty) {
+                if (empty || getIndex() < 0 || getIndex() >= getTableView().getItems().size()) {
                     setGraphic(null);
                 } else {
-                    Evaluation eval = getTableView().getItems().get(getIndex());
-                    boolean isLocked = eval != null && eval.getState() != EvaluationState.CONCEPTION;
-                    btnEdit.setDisable(isLocked);
-                    if (isLocked) {
-                        btnEdit.setTooltip(new Tooltip("Évaluation verrouillée (imprimée ou archivée) : modification impossible"));
-                    } else {
-                        btnEdit.setTooltip(new Tooltip("Ouvrir le concepteur de questions"));
-                    }
-                    setGraphic(pane);
+                    setGraphic(btnMenu);
+                    setAlignment(Pos.CENTER);
                 }
             }
         });
 
-        // Double-clic sur une ligne pour ouvrir le concepteur (uniquement si en conception)
+        // Double-clic sur une ligne pour ouvrir le concepteur
         evalTable.setRowFactory(tv -> {
             TableRow<Evaluation> row = new TableRow<>();
             row.setOnMouseClicked(event -> {
                 if (event.getClickCount() == 2 && (!row.isEmpty())) {
                     Evaluation eval = row.getItem();
                     if (eval != null) {
-                        if (eval.getState() == EvaluationState.CONCEPTION) {
-                            mainLayoutController.openEvaluationBuilder(eval.getId());
-                        } else {
-                            notificationService.showWarning(
-                                    "Modification impossible",
-                                    "Cette évaluation a déjà été imprimée ou archivée. Ses questions et paramètres ne peuvent plus être modifiés."
-                            );
-                        }
+                        mainLayoutController.openEvaluationBuilder(eval.getId());
                     }
                 }
             });
@@ -406,8 +427,19 @@ public class EvaluationsViewController implements Initializable {
         String groupId = selected.groupId() != null ? selected.groupId()
                 : (currentGroup != null ? currentGroup.getId() : null);
 
-        if (!notificationService.confirm("Suppression", "Supprimer l'évaluation",
-                "Êtes-vous sûr de vouloir supprimer définitivement « " + selected.getDesignation() + " » et tous ses documents associés ?")) {
+        String message = "Êtes-vous sûr de vouloir supprimer définitivement l'évaluation « " + selected.getDesignation() + " » ?\n\n"
+                + "Cette action est irréversible et supprimera l'intégralité des données associées :\n"
+                + "• Les questions, réponses et barèmes de l'épreuve\n"
+                + "• Les documents PDF générés et les codes-barres\n"
+                + "• Les copies scannées et les corrections associées.";
+
+        if (!notificationService.confirm(
+                "Supprimer l'évaluation",
+                "Confirmation de suppression de l'évaluation",
+                message,
+                "Supprimer définitivement",
+                "Annuler"
+        )) {
             return;
         }
 
@@ -416,10 +448,47 @@ public class EvaluationsViewController implements Initializable {
             if (groupId != null) {
                 loadEvaluations(groupId);
             }
-            notificationService.showInfo("Supprimé", "L'évaluation a été supprimée avec succès.");
+            notificationService.showInfo("Évaluation supprimée", "L'évaluation « " + selected.getDesignation() + " » a été supprimée avec succès.");
         } catch (Exception e) {
             log.error("Échec de la suppression de l'évaluation", e);
             notificationService.showError("Erreur", "Impossible de supprimer l'évaluation : " + e.getMessage());
+        }
+    }
+
+    public void resetEvaluationToConception(Evaluation selected) {
+        if (selected == null) return;
+
+        String message = "Attention : cette action va repasser l'évaluation « " + selected.getDesignation() + " » en mode conception.\n\n"
+                + "Toutes les données de production associées seront DÉFINITIVEMENT supprimées :\n"
+                + "• Le document PDF des copies générées\n"
+                + "• Les grilles de copies et codes-barres étudiants\n"
+                + "• Les scans importés et les corrections optiques\n"
+                + "• Toutes les notes et statistiques calculées\n\n"
+                + "Les questions, réponses et paramètres de conception seront intégralement conservés.\n\n"
+                + "Souhaitez-vous continuer ?";
+
+        if (!notificationService.confirm(
+                "Réinitialiser la production",
+                "Retourner en mode conception",
+                message
+        )) {
+            return;
+        }
+
+        try {
+            evaluationService.resetToConception(selected.getId());
+            String groupId = selected.groupId() != null ? selected.groupId()
+                    : (currentGroup != null ? currentGroup.getId() : null);
+            if (groupId != null) {
+                loadEvaluations(groupId);
+            }
+            notificationService.showInfo(
+                    "Mode conception restauré",
+                    "L'évaluation a été réinitialisée en mode conception. Vous pouvez désormais modifier les questions et barèmes."
+            );
+        } catch (Exception e) {
+            log.error("Échec de la réinitialisation en mode conception", e);
+            notificationService.showError("Erreur", "Impossible de réinitialiser l'évaluation : " + e.getMessage());
         }
     }
 }

@@ -64,7 +64,9 @@ public class CorrectionViewController implements Initializable {
     @FXML private VBox dashboardView;
     @FXML private Button btnBackToEvalsList;
     @FXML private Label lblActiveEvalTitle;
+    @FXML private Label lblActiveEvalSubtitle;
     @FXML private Label lblActiveEvalState;
+    @FXML private Button btnResetToConception;
     @FXML private Button btnOpenPdfFromDashboard;
 
     @FXML private VBox dropZone;
@@ -83,9 +85,6 @@ public class CorrectionViewController implements Initializable {
     @FXML private Label lblSuccessRate;
     @FXML private Label lblMedianStd;
     @FXML private TextField txtSearchGrade;
-    @FXML private Button btnFilterAll;
-    @FXML private Button btnFilterPassed;
-    @FXML private Button btnFilterFailed;
 
     @FXML private TableView<StudentGrade> gradesTable;
     @FXML private TableColumn<StudentGrade, String> colMatricule;
@@ -95,7 +94,6 @@ public class CorrectionViewController implements Initializable {
     @FXML private TableColumn<StudentGrade, Double> colScore;
     @FXML private TableColumn<StudentGrade, Void> colAction;
 
-    @FXML private Button btnViewStudentCopy;
     @FXML private Button btnExportExcel;
     @FXML private Button btnExportPdfReport;
     @FXML private Button btnViewAnnotatedPdf;
@@ -122,9 +120,6 @@ public class CorrectionViewController implements Initializable {
     private final GradeService gradeService;
     private final NotificationService notificationService;
     private final MainLayoutController mainLayoutController;
-
-    private enum GradeFilter { ALL, PASSED, FAILED }
-    private GradeFilter currentFilter = GradeFilter.ALL;
     private FilteredList<StudentGrade> filteredGradesList;
     private SortedList<StudentGrade> sortedGradesList;
 
@@ -540,17 +535,25 @@ public class CorrectionViewController implements Initializable {
     private void setupIcons() {
         if (btnBackToEvalsList != null) btnBackToEvalsList.setGraphic(new FontIcon(Feather.ARROW_LEFT));
         if (btnOpenPdfFromList != null) btnOpenPdfFromList.setGraphic(new FontIcon(Feather.FILE_TEXT));
+        if (btnResetToConception != null) {
+            FontIcon resetIcon = new FontIcon(Feather.ROTATE_CCW);
+            resetIcon.setIconColor(javafx.scene.paint.Color.web("#ba1a1a"));
+            btnResetToConception.setGraphic(resetIcon);
+            btnResetToConception.setTooltip(new Tooltip("Repasser en mode conception (supprime les copies, scans et notes)"));
+        }
         if (btnOpenPdfFromDashboard != null) btnOpenPdfFromDashboard.setGraphic(new FontIcon(Feather.FILE_TEXT));
         if (btnBrowseFile != null) btnBrowseFile.setGraphic(new FontIcon(Feather.FOLDER));
         if (btnStartCorrection != null) btnStartCorrection.setGraphic(new FontIcon(Feather.CHECK_CIRCLE));
-        if (btnViewStudentCopy != null) btnViewStudentCopy.setGraphic(new FontIcon(Feather.EYE));
-        if (btnExportExcel != null) btnExportExcel.setGraphic(new FontIcon(Feather.FILE_TEXT));
-        if (btnExportPdfReport != null) btnExportPdfReport.setGraphic(new FontIcon(Feather.PRINTER));
+        if (btnExportExcel != null) {
+            btnExportExcel.setGraphic(new FontIcon(Feather.FILE_TEXT));
+            btnExportExcel.setTooltip(new Tooltip("Exporter le Procès-Verbal de notes en format Excel (.xlsx)"));
+        }
+        if (btnExportPdfReport != null) {
+            btnExportPdfReport.setGraphic(new FontIcon(Feather.PRINTER));
+            btnExportPdfReport.setTooltip(new Tooltip("Exporter le Procès-Verbal de notes en format PDF (.pdf)"));
+        }
         if (btnViewAnnotatedPdf != null) btnViewAnnotatedPdf.setGraphic(new FontIcon(Feather.CHECK_SQUARE));
         if (btnExportQuestionsExcel != null) btnExportQuestionsExcel.setGraphic(new FontIcon(Feather.FILE_TEXT));
-        if (btnFilterAll != null) btnFilterAll.setGraphic(new FontIcon(Feather.LIST));
-        if (btnFilterPassed != null) btnFilterPassed.setGraphic(new FontIcon(Feather.CHECK_CIRCLE));
-        if (btnFilterFailed != null) btnFilterFailed.setGraphic(new FontIcon(Feather.ALERT_CIRCLE));
     }
 
     private void setupDropZone() {
@@ -603,9 +606,6 @@ public class CorrectionViewController implements Initializable {
         });
 
         gradesTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
-            if (btnViewStudentCopy != null) {
-                btnViewStudentCopy.setDisable(n == null || n.correctedPages() == 0);
-            }
             if (n != null && currentGroup != null && mainLayoutController != null) {
                 mainLayoutController.setStatus("Étudiant sélectionné : " + n.fullName() + " • Note : " + (n.score() != null ? String.format("%.2f", n.score()) : "-"));
             }
@@ -613,45 +613,6 @@ public class CorrectionViewController implements Initializable {
 
         if (txtSearchGrade != null) {
             txtSearchGrade.textProperty().addListener((obs, oldVal, newVal) -> updateFilterPredicate());
-        }
-        updateFilterButtonStyles();
-    }
-
-    @FXML
-    public void onFilterAll() {
-        currentFilter = GradeFilter.ALL;
-        updateFilterPredicate();
-        updateFilterButtonStyles();
-    }
-
-    @FXML
-    public void onFilterPassed() {
-        currentFilter = GradeFilter.PASSED;
-        updateFilterPredicate();
-        updateFilterButtonStyles();
-    }
-
-    @FXML
-    public void onFilterFailed() {
-        currentFilter = GradeFilter.FAILED;
-        updateFilterPredicate();
-        updateFilterButtonStyles();
-    }
-
-    private void updateFilterButtonStyles() {
-        setFilterButtonActive(btnFilterAll, currentFilter == GradeFilter.ALL);
-        setFilterButtonActive(btnFilterPassed, currentFilter == GradeFilter.PASSED);
-        setFilterButtonActive(btnFilterFailed, currentFilter == GradeFilter.FAILED);
-    }
-
-    private void setFilterButtonActive(Button btn, boolean active) {
-        if (btn == null) return;
-        if (active) {
-            if (!btn.getStyleClass().contains("active-filter")) {
-                btn.getStyleClass().add("active-filter");
-            }
-        } else {
-            btn.getStyleClass().remove("active-filter");
         }
     }
 
@@ -662,13 +623,6 @@ public class CorrectionViewController implements Initializable {
 
         filteredGradesList.setPredicate(grade -> {
             if (grade == null) return false;
-
-            // Filtre par statut (Admis / Ajourné)
-            if (currentFilter == GradeFilter.PASSED) {
-                if (grade.score() == null || grade.score() < 10.0) return false;
-            } else if (currentFilter == GradeFilter.FAILED) {
-                if (grade.score() == null || grade.score() >= 10.0) return false;
-            }
 
             // Filtre par texte de recherche
             if (!search.isEmpty()) {
@@ -689,7 +643,10 @@ public class CorrectionViewController implements Initializable {
         showDashboardView();
 
         if (lblActiveEvalTitle != null) {
-            lblActiveEvalTitle.setText(eval.getDesignation());
+            lblActiveEvalTitle.setText("Correction & Résultats");
+        }
+        if (lblActiveEvalSubtitle != null) {
+            lblActiveEvalSubtitle.setText("Tableau de bord de l'évaluation • Notes, copies corrigées et analyse statistique");
         }
         updateActiveEvalStateBadge(eval.getState());
 
@@ -703,7 +660,10 @@ public class CorrectionViewController implements Initializable {
     private void returnToEvaluationsListDirectly() {
         this.currentEvaluation = null;
         if (lblActiveEvalTitle != null) {
-            lblActiveEvalTitle.setText("Tableau de bord de l'évaluation");
+            lblActiveEvalTitle.setText("Correction & Résultats");
+        }
+        if (lblActiveEvalSubtitle != null) {
+            lblActiveEvalSubtitle.setText("Tableau de bord de l'évaluation • Notes, copies corrigées et analyse statistique");
         }
         updateActiveEvalStateBadge(null);
         if (mainLayoutController != null) {
@@ -1087,25 +1047,9 @@ public class CorrectionViewController implements Initializable {
         }
         if (lblMedianStd != null) lblMedianStd.setText("-");
         if (txtSearchGrade != null) txtSearchGrade.clear();
-        currentFilter = GradeFilter.ALL;
-        updateFilterButtonStyles();
         if (btnExportExcel != null) btnExportExcel.setDisable(true);
         if (btnExportPdfReport != null) btnExportPdfReport.setDisable(true);
         if (btnViewAnnotatedPdf != null) btnViewAnnotatedPdf.setDisable(true);
-        if (btnViewStudentCopy != null) btnViewStudentCopy.setDisable(true);
-    }
-
-    @FXML
-    public void onViewStudentCopy() {
-        StudentGrade sel = gradesTable.getSelectionModel().getSelectedItem();
-        if (sel != null) {
-            viewIndividualCopy(sel);
-        }
-    }
-
-    @FXML
-    public void onViewSelectedStudentCopy() {
-        onViewStudentCopy();
     }
 
     private void viewIndividualCopy(StudentGrade grade) {
@@ -1211,6 +1155,46 @@ public class CorrectionViewController implements Initializable {
                 Platform.runLater(() -> notificationService.showError("Erreur", "Aucune copie corrigée disponible pour l'instant."));
             }
         });
+    }
+
+    @FXML
+    public void onResetToConception() {
+        if (currentEvaluation == null) return;
+
+        String message = "Attention : cette action va repasser l'évaluation « " + currentEvaluation.getDesignation() + " » en mode conception.\n\n"
+                + "Toutes les données de production associées seront DÉFINITIVEMENT supprimées :\n"
+                + "• Le document PDF des copies générées\n"
+                + "• Les grilles de copies et codes-barres étudiants\n"
+                + "• Les scans importés et les corrections optiques\n"
+                + "• Toutes les notes et statistiques calculées\n\n"
+                + "Les questions, réponses et paramètres de conception seront intégralement conservés.\n\n"
+                + "Voulez-vous continuer ?";
+
+        boolean confirmed = notificationService.confirm(
+                "Réinitialiser la production",
+                "Retourner en mode conception",
+                message
+        );
+
+        if (!confirmed) return;
+
+        try {
+            String evalId = currentEvaluation.getId();
+            evaluationService.resetToConception(evalId);
+            notificationService.showInfo(
+                    "Mode conception restauré",
+                    "L'évaluation a été réinitialisée en mode conception. Toutes les données de production ont été supprimées."
+            );
+
+            returnToEvaluationsListDirectly();
+
+            if (currentGroup != null) {
+                loadEvaluationsForGroup(currentGroup.getId());
+            }
+        } catch (Exception e) {
+            log.error("Erreur lors de la réinitialisation en mode conception de l'évaluation {}", currentEvaluation.getId(), e);
+            notificationService.showError("Erreur", "Impossible de réinitialiser l'évaluation : " + e.getMessage());
+        }
     }
 
     @FXML

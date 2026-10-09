@@ -12,8 +12,8 @@
              styleClass="group-tab-pane course-tab-pane">
         <tabs>
             <Tab fx:id="tabStudents" text="Étudiants &amp; Inscriptions" closable="false"/>
-            <Tab fx:id="tabEvaluations" text="Évaluations &amp; Examens" closable="false"/>
-            <Tab fx:id="tabCorrection" text="Correction &amp; Scanner" closable="false"/>
+            <Tab fx:id="tabEvaluations" text="Conception des Examens" closable="false"/>
+            <Tab fx:id="tabCorrection" text="Correction &amp; Résultats" closable="false"/>
         </tabs>
     </TabPane>
 </VBox>

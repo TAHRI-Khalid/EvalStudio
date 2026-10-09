@@ -110,7 +110,8 @@ echo "=== [4/4] Création du binaire natif ($PACKAGE_TYPE) avec jpackage ==="
     "${ICON_OPT[@]}" \
     "${EXTRA_OPTS[@]}" \
     --java-options "--enable-native-access=ALL-UNNAMED" \
-    --java-options "-Dprism.verbose=false"
+    --java-options "-Dprism.verbose=false" \
+    --verbose
 
 echo ""
 echo "=============================================================================="

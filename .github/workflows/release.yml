@@ -111,15 +111,17 @@ jobs:
           distribution: 'oracle'
           cache: maven
 
-      - name: Configurer WiX Toolset
+      - name: Installer et configurer WiX Toolset
         shell: powershell
         run: |
           $wixPath = "C:\Program Files (x86)\WiX Toolset v3.11\bin"
+          if (-not (Test-Path (Join-Path $wixPath "candle.exe"))) {
+            Write-Host "Installation de WiX 3.11 via Chocolatey..."
+            choco install wixtoolset --yes --no-progress
+          }
           if (Test-Path $wixPath) {
             echo $wixPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-            Write-Host "WiX 3.11 ajouté au GITHUB_PATH"
-          } else {
-            choco install wixtoolset --yes
+            Write-Host "WiX Toolset configuré dans GITHUB_PATH : $wixPath"
           }
 
       - name: Compiler le projet
@@ -127,20 +129,17 @@ jobs:
         run: |
           mvnw.cmd clean package -DskipTests
 
-      - name: Générer le package Windows MSI et Portable
+      - name: Générer le package Windows Portable (ZIP)
         shell: powershell
         run: |
-          # Packaging MSI
-          .\package-native.ps1 -PackageType msi -AppVersion "${{ env.VERSION }}"
-          # Packaging App-Image
           .\package-native.ps1 -PackageType app-image -AppVersion "${{ env.VERSION }}"
-
           New-Item -ItemType Directory -Path release-artifacts -Force | Out-Null
-          
-          # Compression du bundle portable
           Compress-Archive -Path dist\EvalStudio -DestinationPath "release-artifacts\EvalStudio-windows-x64-${{ env.VERSION }}.zip" -Force
-          
-          # Copie du MSI
+
+      - name: Générer le package Windows Installateur (MSI)
+        shell: powershell
+        run: |
+          .\package-native.ps1 -PackageType msi -AppVersion "${{ env.VERSION }}"
           Get-ChildItem -Path dist\*.msi | Copy-Item -Destination release-artifacts\
 
       - name: Uploader les artefacts Windows
@@ -176,20 +175,40 @@ jobs:
           distribution: 'oracle'
           cache: maven
 
+      - name: Générer l'icône native Apple (.icns)
+        run: |
+          mkdir -p EvalStudio.iconset
+          sips -z 16 16     src/main/resources/icons/app-icon.png --out EvalStudio.iconset/icon_16x16.png
+          sips -z 32 32     src/main/resources/icons/app-icon.png --out EvalStudio.iconset/icon_16x16@2x.png
+          sips -z 32 32     src/main/resources/icons/app-icon.png --out EvalStudio.iconset/icon_32x32.png
+          sips -z 64 64     src/main/resources/icons/app-icon.png --out EvalStudio.iconset/icon_32x32@2x.png
+          sips -z 128 128   src/main/resources/icons/app-icon.png --out EvalStudio.iconset/icon_128x128.png
+          sips -z 256 256   src/main/resources/icons/app-icon.png --out EvalStudio.iconset/icon_128x128@2x.png
+          sips -z 256 256   src/main/resources/icons/app-icon.png --out EvalStudio.iconset/icon_256x256.png
+          sips -z 512 512   src/main/resources/icons/app-icon.png --out EvalStudio.iconset/icon_256x256@2x.png
+          iconutil -c icns EvalStudio.iconset -o src/main/resources/icons/app-icon.icns
+          rm -rf EvalStudio.iconset
+
       - name: Compiler le projet
         run: |
           chmod +x ./mvnw
           ./mvnw clean package -DskipTests
 
-      - name: Générer le package macOS DMG
+      - name: Générer les packages macOS (DMG et App portable)
         env:
           SKIP_BUILD: "true"
         run: |
           chmod +x ./package-native.sh
+          
+          # 1. Package DMG
           ./package-native.sh dmg "${{ env.VERSION }}"
+          
+          # 2. Package App-image portable
+          ./package-native.sh app-image "${{ env.VERSION }}"
           
           mkdir -p release-artifacts
           find dist/ -type f -name "*.dmg" -exec cp {} release-artifacts/ \;
+          tar -czf "release-artifacts/EvalStudio-macos-arm64-${{ env.VERSION }}.tar.gz" -C dist EvalStudio.app
 
       - name: Uploader les artefacts macOS
         uses: actions/upload-artifact@v4

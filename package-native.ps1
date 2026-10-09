@@ -33,11 +33,9 @@ if ($PackageType -eq "msi" -or $PackageType -eq "exe") {
         "C:\Program Files\WiX Toolset v3.11\bin"
     )
     foreach ($Cand in $WixCandidates) {
-        if (Test-Path $Cand) {
-            if (-not ($env:PATH -split ';' -contains $Cand)) {
-                $env:PATH = "$Cand;$env:PATH"
-                Write-Host "WiX Toolset détecté et ajouté au PATH : $Cand" -ForegroundColor Green
-            }
+        if (Test-Path (Join-Path $Cand "candle.exe")) {
+            $env:PATH = "$Cand;$env:PATH"
+            Write-Host "WiX Toolset détecté et ajouté au PATH : $Cand" -ForegroundColor Green
             break
         }
     }
@@ -47,7 +45,7 @@ Write-Host "Utilisation de jpackage : $JpackageCmd"
 Write-Host "Type de paquet          : $PackageType"
 Write-Host "Version                 : $CleanVersion"
 
-Write-Host "=== [2/4] Compilation et création de l'archive JAR ===" -ForegroundColor Cyan
+Write-Host "=== [2/4] Vérification de l'archive JAR ===" -ForegroundColor Cyan
 $JarFiles = Get-ChildItem -Path "target\eval_desktop-*.jar" -ErrorAction SilentlyContinue
 if (-not $JarFiles) {
     if (Test-Path ".\mvnw.cmd") {
@@ -91,7 +89,8 @@ $JpackageArgs = @(
     "--dest", $DistDir,
     "--type", $PackageType,
     "--java-options", "--enable-native-access=ALL-UNNAMED",
-    "--java-options", "-Dprism.verbose=false"
+    "--java-options", "-Dprism.verbose=false",
+    "--verbose"
 ) + $IconOpt + $ExtraOpts
 
 & $JpackageCmd @JpackageArgs

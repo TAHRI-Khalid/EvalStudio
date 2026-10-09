@@ -114,43 +114,86 @@
             <ProgressBar fx:id="progressSuccessRate" prefWidth="120" progress="0.0"/>
         </HBox>
 
-        <!-- Tableau de bord des notes & Exports (prend tout l'espace restant) -->
-        <VBox spacing="8" VBox.vgrow="ALWAYS" maxHeight="Infinity">
-            <HBox alignment="CENTER_LEFT" spacing="10">
-                <Label text="Tableau de bord des notes" style="-fx-font-weight: bold; -fx-font-size: 15px; -fx-text-fill: -color-fg-default;"/>
-                <TextField fx:id="txtSearchGrade" promptText="Filtrer par nom, matricule..." prefWidth="220" styleClass="search-field"/>
-                <HBox spacing="4" alignment="CENTER_LEFT">
-                    <Button fx:id="btnFilterAll" text="Tous" onAction="#onFilterAll" styleClass="card-action-btn"/>
-                    <Button fx:id="btnFilterPassed" text="Admis (≥10)" onAction="#onFilterPassed" styleClass="card-action-btn"/>
-                    <Button fx:id="btnFilterFailed" text="Ajournés (&lt;10)" onAction="#onFilterFailed" styleClass="card-action-btn"/>
-                </HBox>
-                <Pane HBox.hgrow="ALWAYS"/>
-                <Button fx:id="btnViewStudentCopy" text="Voir Copie" disable="true" onAction="#onViewStudentCopy"/>
-                <Button fx:id="btnExportExcel" text="Excel (.xlsx)" disable="true" onAction="#onExportExcel"/>
-                <Button fx:id="btnExportPdfReport" text="PV Notes" disable="true" onAction="#onExportPdfReport"/>
-                <Button fx:id="btnViewAnnotatedPdf" text="Toutes Copies" disable="true" onAction="#onViewAnnotatedPdf"/>
-            </HBox>
+        <!-- Onglets du tableau de bord (prend tout l'espace restant) -->
+        <TabPane fx:id="dashboardTabPane" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS"
+                 styleClass="group-tab-pane course-tab-pane">
+            <tabs>
+                <!-- Onglet 1 : Résultats par étudiant -->
+                <Tab text="Résultats par étudiant" closable="false">
+                    <VBox spacing="8" style="-fx-padding: 8 0 0 0;" VBox.vgrow="ALWAYS">
+                        <HBox alignment="CENTER_LEFT" spacing="10">
+                            <Label text="Tableau de bord des notes" style="-fx-font-weight: bold; -fx-font-size: 15px; -fx-text-fill: -color-fg-default;"/>
+                            <TextField fx:id="txtSearchGrade" promptText="Filtrer par nom, matricule..." prefWidth="220" styleClass="search-field"/>
+                            <HBox spacing="4" alignment="CENTER_LEFT">
+                                <Button fx:id="btnFilterAll" text="Tous" onAction="#onFilterAll" styleClass="card-action-btn"/>
+                                <Button fx:id="btnFilterPassed" text="Admis (≥10)" onAction="#onFilterPassed" styleClass="card-action-btn"/>
+                                <Button fx:id="btnFilterFailed" text="Ajournés (&lt;10)" onAction="#onFilterFailed" styleClass="card-action-btn"/>
+                            </HBox>
+                            <Pane HBox.hgrow="ALWAYS"/>
+                            <Button fx:id="btnViewStudentCopy" text="Voir Copie" disable="true" onAction="#onViewStudentCopy"/>
+                            <Button fx:id="btnExportExcel" text="Excel (.xlsx)" disable="true" onAction="#onExportExcel"/>
+                            <Button fx:id="btnExportPdfReport" text="PV Notes" disable="true" onAction="#onExportPdfReport"/>
+                            <Button fx:id="btnViewAnnotatedPdf" text="Toutes Copies" disable="true" onAction="#onViewAnnotatedPdf"/>
+                        </HBox>
 
-            <TableView fx:id="gradesTable" VBox.vgrow="ALWAYS" maxHeight="Infinity" maxWidth="Infinity" minHeight="180" styleClass="table-view">
-                <columns>
-                    <TableColumn fx:id="colMatricule" text="Matricule" prefWidth="120" minWidth="100" maxWidth="160"/>
-                    <TableColumn fx:id="colNom" text="Nom" prefWidth="180" minWidth="120"/>
-                    <TableColumn fx:id="colPrenom" text="Prénom" prefWidth="180" minWidth="120"/>
-                    <TableColumn fx:id="colQuestions" text="Questions Corrigées" prefWidth="160" minWidth="130" maxWidth="200"/>
-                    <TableColumn fx:id="colScore" text="Note Finale" prefWidth="120" minWidth="100" maxWidth="150"/>
-                    <TableColumn fx:id="colAction" text="Copie Corrigée" prefWidth="150" minWidth="130" maxWidth="180"/>
-                </columns>
-                <columnResizePolicy>
-                    <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
-                </columnResizePolicy>
-                <placeholder>
-                    <VBox alignment="CENTER" spacing="10" styleClass="empty-state-box">
-                        <FontIcon iconLiteral="fth-inbox" iconColor="#74777f" iconSize="36"/>
-                        <Label text="Aucune note disponible" styleClass="empty-state-title" style="-fx-font-size: 14px;"/>
-                        <Label text="Déposez le PDF scanné des copies ci-dessus pour lancer la correction automatique." styleClass="empty-state-subtitle"/>
+                        <TableView fx:id="gradesTable" VBox.vgrow="ALWAYS" maxHeight="Infinity" maxWidth="Infinity" minHeight="180" styleClass="table-view">
+                            <columns>
+                                <TableColumn fx:id="colMatricule" text="Matricule" prefWidth="120" minWidth="100" maxWidth="160"/>
+                                <TableColumn fx:id="colNom" text="Nom" prefWidth="180" minWidth="120"/>
+                                <TableColumn fx:id="colPrenom" text="Prénom" prefWidth="180" minWidth="120"/>
+                                <TableColumn fx:id="colQuestions" text="Questions Corrigées" prefWidth="160" minWidth="130" maxWidth="200"/>
+                                <TableColumn fx:id="colScore" text="Note Finale" prefWidth="120" minWidth="100" maxWidth="150"/>
+                                <TableColumn fx:id="colAction" text="Copie Corrigée" prefWidth="150" minWidth="130" maxWidth="180"/>
+                            </columns>
+                            <columnResizePolicy>
+                                <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                            </columnResizePolicy>
+                            <placeholder>
+                                <VBox alignment="CENTER" spacing="10" styleClass="empty-state-box">
+                                    <FontIcon iconLiteral="fth-inbox" iconColor="#74777f" iconSize="36"/>
+                                    <Label text="Aucune note disponible" styleClass="empty-state-title" style="-fx-font-size: 14px;"/>
+                                    <Label text="Déposez le PDF scanné des copies ci-dessus pour lancer la correction automatique." styleClass="empty-state-subtitle"/>
+                                </VBox>
+                            </placeholder>
+                        </TableView>
                     </VBox>
-                </placeholder>
-            </TableView>
-        </VBox>
+                </Tab>
+
+                <!-- Onglet 2 : Analyse par question -->
+                <Tab text="Analyse par question" closable="false">
+                    <VBox spacing="8" style="-fx-padding: 8 0 0 0;" VBox.vgrow="ALWAYS">
+                        <HBox alignment="CENTER_LEFT" spacing="10">
+                            <Label text="Statistiques par question" style="-fx-font-weight: bold; -fx-font-size: 15px; -fx-text-fill: -color-fg-default;"/>
+                            <TextField fx:id="txtSearchQuestion" promptText="Rechercher une question..." prefWidth="250" styleClass="search-field"/>
+                            <Pane HBox.hgrow="ALWAYS"/>
+                            <Label fx:id="lblQuestionsSummary" text="" style="-fx-font-size: 12px; -fx-text-fill: -color-fg-muted; -fx-font-weight: 600;"/>
+                            <Button fx:id="btnExportQuestionsExcel" text="Excel (.xlsx)" disable="true" onAction="#onExportExcel"/>
+                        </HBox>
+
+                        <TableView fx:id="questionsTable" VBox.vgrow="ALWAYS" maxHeight="Infinity" maxWidth="Infinity" minHeight="180" styleClass="table-view">
+                            <columns>
+                                <TableColumn fx:id="colQNumber" text="N°" prefWidth="60" minWidth="50" maxWidth="80" style="-fx-alignment: CENTER;"/>
+                                <TableColumn fx:id="colQContent" text="Énoncé de la question" prefWidth="340" minWidth="200"/>
+                                <TableColumn fx:id="colQCorrect" text="Correctes" prefWidth="110" minWidth="90" maxWidth="140" style="-fx-alignment: CENTER;"/>
+                                <TableColumn fx:id="colQEmpty" text="Non répondu" prefWidth="110" minWidth="90" maxWidth="140" style="-fx-alignment: CENTER;"/>
+                                <TableColumn fx:id="colQIncorrect" text="Mauvaises" prefWidth="110" minWidth="90" maxWidth="140" style="-fx-alignment: CENTER;"/>
+                                <TableColumn fx:id="colQTotal" text="Total traités" prefWidth="110" minWidth="90" maxWidth="140" style="-fx-alignment: CENTER;"/>
+                                <TableColumn fx:id="colQSuccessRate" text="Taux de réussite (%)" prefWidth="180" minWidth="150" maxWidth="230" style="-fx-alignment: CENTER;"/>
+                            </columns>
+                            <columnResizePolicy>
+                                <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                            </columnResizePolicy>
+                            <placeholder>
+                                <VBox alignment="CENTER" spacing="10" styleClass="empty-state-box">
+                                    <FontIcon iconLiteral="fth-help-circle" iconColor="#74777f" iconSize="36"/>
+                                    <Label text="Aucune statistique par question disponible" styleClass="empty-state-title" style="-fx-font-size: 14px;"/>
+                                    <Label text="Les statistiques par question seront calculées après la correction des copies." styleClass="empty-state-subtitle"/>
+                                </VBox>
+                            </placeholder>
+                        </TableView>
+                    </VBox>
+                </Tab>
+            </tabs>
+        </TabPane>
     </VBox>
 </VBox>

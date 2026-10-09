@@ -281,8 +281,12 @@ public class DocumentService {
     }
 
     public void exportGradesToExcel(String groupId, String evaluationId, File targetFile) throws Exception {
-        loadEvaluationData(groupId, evaluationId);
+        var data = loadEvaluationData(groupId, evaluationId);
         var studentDetailsList = gradeService.findStudentDetails(groupId, evaluationId);
+        var questionStatsList = gradeService.computeQuestionStatistics(
+                data.evaluation(),
+                blueprintPaperAssessmentRepository.findByGroupIdAndEvaluationId(groupId, evaluationId)
+        );
 
         try (var workbook = new XSSFWorkbook()) {
             var sheet = workbook.createSheet("Notes");
@@ -302,6 +306,31 @@ public class DocumentService {
                 row.createCell(3).setCellValue(student.score());
                 i++;
             }
+
+            if (questionStatsList != null && !questionStatsList.isEmpty()) {
+                var qSheet = workbook.createSheet("Analyse Questions");
+                var qHeader = qSheet.createRow(0);
+                qHeader.createCell(0).setCellValue("N° Question");
+                qHeader.createCell(1).setCellValue("Énoncé");
+                qHeader.createCell(2).setCellValue("Réponses correctes");
+                qHeader.createCell(3).setCellValue("Non répondu");
+                qHeader.createCell(4).setCellValue("Mauvaises réponses");
+                qHeader.createCell(5).setCellValue("Total copies");
+                qHeader.createCell(6).setCellValue("Taux de réussite (%)");
+
+                int qi = 1;
+                for (var qs : questionStatsList) {
+                    var qRow = qSheet.createRow(qi++);
+                    qRow.createCell(0).setCellValue("Q" + qs.questionNumber());
+                    qRow.createCell(1).setCellValue(qs.content());
+                    qRow.createCell(2).setCellValue(qs.correctCount());
+                    qRow.createCell(3).setCellValue(qs.emptyCount());
+                    qRow.createCell(4).setCellValue(qs.incorrectCount());
+                    qRow.createCell(5).setCellValue(qs.totalEvaluated());
+                    qRow.createCell(6).setCellValue(qs.successRate());
+                }
+            }
+
             try (var fos = new java.io.FileOutputStream(targetFile)) {
                 workbook.write(fos);
             }

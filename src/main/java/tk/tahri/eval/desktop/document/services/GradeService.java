@@ -3,16 +3,24 @@ package tk.tahri.eval.desktop.document.services;
 import org.springframework.stereotype.Service;
 import tk.tahri.eval.desktop.document.dto.GradeStatistics;
 import tk.tahri.eval.desktop.document.dto.GradesResponse;
+import tk.tahri.eval.desktop.document.dto.QuestionStatistics;
 import tk.tahri.eval.desktop.document.dto.StudentDetails;
 import tk.tahri.eval.desktop.document.dto.StudentGrade;
 import tk.tahri.eval.desktop.document.entities.blueprint.AssessmentStudent;
 import tk.tahri.eval.desktop.document.entities.blueprint.BlueprintPaperAssessment;
 import tk.tahri.eval.desktop.document.entities.blueprint.BlueprintQuestion;
+import tk.tahri.eval.desktop.document.entities.blueprint.QuestionState;
 import tk.tahri.eval.desktop.document.repositories.BlueprintPaperAssessmentRepository;
 import tk.tahri.eval.desktop.exception.NotFoundException;
+import tk.tahri.eval.desktop.model.Evaluation;
+import tk.tahri.eval.desktop.model.Question;
 import tk.tahri.eval.desktop.repository.EvaluationRepository;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class GradeService {
@@ -56,7 +64,7 @@ public class GradeService {
     }
 
     public GradesResponse getGrades(String groupId, String evaluationId) {
-        evaluationRepository.findById(evaluationId)
+        Evaluation evaluation = evaluationRepository.findById(evaluationId)
                 .filter(e -> groupId.equals(e.groupId()))
                 .orElseThrow(() -> new NotFoundException("Évaluation introuvable : " + evaluationId));
 
@@ -65,7 +73,61 @@ public class GradeService {
         List<StudentGrade> students = assessments.stream()
                 .map(this::toGrade)
                 .toList();
-        return new GradesResponse(computeStatistics(students), students);
+        List<QuestionStatistics> questionStats = computeQuestionStatistics(evaluation, assessments);
+        return new GradesResponse(computeStatistics(students), students, questionStats);
+    }
+
+    public List<QuestionStatistics> computeQuestionStatistics(Evaluation evaluation, List<BlueprintPaperAssessment> assessments) {
+        if (evaluation.getQuestions() == null || evaluation.getQuestions().isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<BlueprintQuestion> allCorrectedBlueprintQuestions = assessments.stream()
+                .flatMap(a -> a.blueprintPages.stream())
+                .flatMap(p -> p.blueprintQuestions.stream())
+                .filter(bq -> bq.corrected)
+                .toList();
+
+        Map<String, List<BlueprintQuestion>> bqByQuestionId = allCorrectedBlueprintQuestions.stream()
+                .filter(bq -> bq.id != null)
+                .collect(Collectors.groupingBy(bq -> bq.id));
+
+        List<QuestionStatistics> result = new ArrayList<>();
+        List<Question> modelQuestions = evaluation.getQuestions();
+
+        for (int i = 0; i < modelQuestions.size(); i++) {
+            Question q = modelQuestions.get(i);
+            int questionNumber = i + 1;
+            List<BlueprintQuestion> answersForQ = bqByQuestionId.getOrDefault(q.id(), Collections.emptyList());
+
+            long correctCount = answersForQ.stream()
+                    .filter(bq -> bq.state == QuestionState.CORRECT)
+                    .count();
+            long emptyCount = answersForQ.stream()
+                    .filter(bq -> bq.state == QuestionState.EMPTY)
+                    .count();
+            long incorrectCount = answersForQ.stream()
+                    .filter(bq -> bq.state == QuestionState.INCORRECT)
+                    .count();
+
+            long totalEvaluated = correctCount + emptyCount + incorrectCount;
+            double successRate = totalEvaluated > 0
+                    ? round((correctCount * 100.0) / totalEvaluated)
+                    : 0.0;
+
+            result.add(new QuestionStatistics(
+                    q.id(),
+                    questionNumber,
+                    q.content() != null ? q.content() : "",
+                    correctCount,
+                    emptyCount,
+                    incorrectCount,
+                    totalEvaluated,
+                    successRate
+            ));
+        }
+
+        return result;
     }
 
     private StudentGrade toGrade(BlueprintPaperAssessment assessment) {

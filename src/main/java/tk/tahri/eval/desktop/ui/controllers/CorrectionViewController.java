@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
+import tk.tahri.eval.desktop.document.dto.QuestionStatistics;
 import tk.tahri.eval.desktop.document.dto.StudentGrade;
 import tk.tahri.eval.desktop.document.services.DocumentProcessingService;
 import tk.tahri.eval.desktop.document.services.DocumentProcessingService.ProcessingResult;
@@ -103,6 +104,21 @@ public class CorrectionViewController implements Initializable {
     @FXML private Button btnExportPdfReport;
     @FXML private Button btnViewAnnotatedPdf;
 
+    // 3. Onglets & Analyse par question
+    @FXML private TabPane dashboardTabPane;
+    @FXML private TextField txtSearchQuestion;
+    @FXML private Label lblQuestionsSummary;
+    @FXML private Button btnExportQuestionsExcel;
+
+    @FXML private TableView<QuestionStatistics> questionsTable;
+    @FXML private TableColumn<QuestionStatistics, Integer> colQNumber;
+    @FXML private TableColumn<QuestionStatistics, String> colQContent;
+    @FXML private TableColumn<QuestionStatistics, Long> colQCorrect;
+    @FXML private TableColumn<QuestionStatistics, Long> colQEmpty;
+    @FXML private TableColumn<QuestionStatistics, Long> colQIncorrect;
+    @FXML private TableColumn<QuestionStatistics, Long> colQTotal;
+    @FXML private TableColumn<QuestionStatistics, Double> colQSuccessRate;
+
     private final GroupService groupService;
     private final EvaluationService evaluationService;
     private final DocumentProcessingService documentProcessingService;
@@ -115,6 +131,10 @@ public class CorrectionViewController implements Initializable {
     private GradeFilter currentFilter = GradeFilter.ALL;
     private FilteredList<StudentGrade> filteredGradesList;
     private SortedList<StudentGrade> sortedGradesList;
+
+    private final ObservableList<QuestionStatistics> questionStatisticsList = FXCollections.observableArrayList();
+    private FilteredList<QuestionStatistics> filteredQuestionsList;
+    private SortedList<QuestionStatistics> sortedQuestionsList;
 
     private Group currentGroup;
     private Evaluation currentEvaluation;
@@ -142,6 +162,7 @@ public class CorrectionViewController implements Initializable {
     public void initialize(URL location, ResourceBundle resources) {
         setupEvaluationsTable();
         setupTableColumns();
+        setupQuestionsTable();
         setupIcons();
         setupDropZone();
         setupListeners();
@@ -368,6 +389,158 @@ public class CorrectionViewController implements Initializable {
         gradesTable.setItems(sortedGradesList);
     }
 
+    private void setupQuestionsTable() {
+        if (questionsTable == null) return;
+
+        colQNumber.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().questionNumber()));
+        colQNumber.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Integer item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText("Q" + item);
+                    setStyle("-fx-font-weight: bold; -fx-alignment: CENTER;");
+                }
+            }
+        });
+
+        colQContent.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().content()));
+        colQContent.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setTooltip(null);
+                } else {
+                    setText(item);
+                    setTooltip(new Tooltip(item));
+                }
+            }
+        });
+
+        colQCorrect.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().correctCount()));
+        colQCorrect.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Long item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(String.valueOf(item));
+                    setStyle("-fx-font-weight: bold; -fx-text-fill: #1b8744; -fx-alignment: CENTER;");
+                }
+            }
+        });
+
+        colQEmpty.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().emptyCount()));
+        colQEmpty.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Long item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(String.valueOf(item));
+                    setStyle("-fx-font-weight: 600; -fx-text-fill: #b45309; -fx-alignment: CENTER;");
+                }
+            }
+        });
+
+        colQIncorrect.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().incorrectCount()));
+        colQIncorrect.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Long item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(String.valueOf(item));
+                    setStyle("-fx-font-weight: bold; -fx-text-fill: #ba1a1a; -fx-alignment: CENTER;");
+                }
+            }
+        });
+
+        colQTotal.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().totalEvaluated()));
+        colQTotal.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Long item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(String.valueOf(item));
+                    setStyle("-fx-alignment: CENTER; -fx-font-weight: 600;");
+                }
+            }
+        });
+
+        colQSuccessRate.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().successRate()));
+        colQSuccessRate.setCellFactory(col -> new TableCell<>() {
+            private final ProgressBar bar = new ProgressBar(0.0);
+            private final Label label = new Label();
+            private final HBox container = new HBox(8, bar, label);
+
+            {
+                container.setAlignment(Pos.CENTER_LEFT);
+                bar.setPrefWidth(70);
+                bar.setMaxWidth(70);
+            }
+
+            @Override
+            protected void updateItem(Double item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                    setText(null);
+                } else {
+                    label.setText(String.format("%.1f %%", item));
+                    bar.setProgress(item / 100.0);
+                    if (item >= 50.0) {
+                        label.setStyle("-fx-font-weight: bold; -fx-text-fill: #1b8744;");
+                        bar.setStyle("-fx-accent: #1b8744;");
+                    } else {
+                        label.setStyle("-fx-font-weight: bold; -fx-text-fill: #ba1a1a;");
+                        bar.setStyle("-fx-accent: #ba1a1a;");
+                    }
+                    setGraphic(container);
+                    setText(null);
+                }
+            }
+        });
+
+        filteredQuestionsList = new FilteredList<>(questionStatisticsList, p -> true);
+        sortedQuestionsList = new SortedList<>(filteredQuestionsList);
+        sortedQuestionsList.comparatorProperty().bind(questionsTable.comparatorProperty());
+        questionsTable.setItems(sortedQuestionsList);
+
+        if (txtSearchQuestion != null) {
+            txtSearchQuestion.textProperty().addListener((obs, oldVal, newVal) -> updateQuestionsFilterPredicate());
+        }
+    }
+
+    private void updateQuestionsFilterPredicate() {
+        if (filteredQuestionsList == null) return;
+        String search = (txtSearchQuestion != null && txtSearchQuestion.getText() != null)
+                ? txtSearchQuestion.getText().trim().toLowerCase() : "";
+
+        filteredQuestionsList.setPredicate(qs -> {
+            if (qs == null) return false;
+            if (search.isEmpty()) return true;
+            String numStr = "q" + qs.questionNumber();
+            String numOnly = String.valueOf(qs.questionNumber());
+            String content = qs.content() != null ? qs.content().toLowerCase() : "";
+            return numStr.contains(search) || numOnly.contains(search) || content.contains(search);
+        });
+    }
+
     private void setupIcons() {
         if (btnBackToEvalsList != null) btnBackToEvalsList.setGraphic(new FontIcon(Feather.ARROW_LEFT));
         if (btnOpenPdfFromList != null) btnOpenPdfFromList.setGraphic(new FontIcon(Feather.FILE_TEXT));
@@ -378,6 +551,7 @@ public class CorrectionViewController implements Initializable {
         if (btnExportExcel != null) btnExportExcel.setGraphic(new FontIcon(Feather.FILE_TEXT));
         if (btnExportPdfReport != null) btnExportPdfReport.setGraphic(new FontIcon(Feather.PRINTER));
         if (btnViewAnnotatedPdf != null) btnViewAnnotatedPdf.setGraphic(new FontIcon(Feather.CHECK_SQUARE));
+        if (btnExportQuestionsExcel != null) btnExportQuestionsExcel.setGraphic(new FontIcon(Feather.FILE_TEXT));
         if (btnFilterAll != null) btnFilterAll.setGraphic(new FontIcon(Feather.LIST));
         if (btnFilterPassed != null) btnFilterPassed.setGraphic(new FontIcon(Feather.CHECK_CIRCLE));
         if (btnFilterFailed != null) btnFilterFailed.setGraphic(new FontIcon(Feather.ALERT_CIRCLE));
@@ -679,13 +853,22 @@ public class CorrectionViewController implements Initializable {
         }
     }
 
+    private javafx.stage.Window getWindow() {
+        if (dashboardView != null && dashboardView.getScene() != null) {
+            return dashboardView.getScene().getWindow();
+        }
+        if (evalSelectionView != null && evalSelectionView.getScene() != null) {
+            return evalSelectionView.getScene().getWindow();
+        }
+        return null;
+    }
+
     @FXML
     public void onBrowseFile() {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Sélectionner les scans des copies d'examen");
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Fichiers PDF ou Images", "*.pdf", "*.png", "*.jpg", "*.jpeg"));
-        javafx.stage.Window window = dashboardView != null && dashboardView.getScene() != null ? dashboardView.getScene().getWindow() : null;
-        File file = chooser.showOpenDialog(window);
+        File file = chooser.showOpenDialog(getWindow());
         if (file != null) {
             setScanFile(file);
         }
@@ -706,8 +889,7 @@ public class CorrectionViewController implements Initializable {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Sélectionner le fichier des copies scannées");
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Fichiers PDF ou Images (*.pdf, *.png, *.jpg)", "*.pdf", "*.png", "*.jpg", "*.jpeg"));
-        javafx.stage.Window window = dashboardView != null && dashboardView.getScene() != null ? dashboardView.getScene().getWindow() : null;
-        File file = chooser.showOpenDialog(window);
+        File file = chooser.showOpenDialog(getWindow());
         if (file == null) {
             return;
         }
@@ -855,6 +1037,19 @@ public class CorrectionViewController implements Initializable {
                 if (btnExportPdfReport != null) btnExportPdfReport.setDisable(!hasGrades);
                 if (btnViewAnnotatedPdf != null) btnViewAnnotatedPdf.setDisable(!hasGrades);
 
+                // Statistiques par question
+                questionStatisticsList.setAll(resp.questions());
+                boolean hasQuestions = !resp.questions().isEmpty();
+                if (btnExportQuestionsExcel != null) btnExportQuestionsExcel.setDisable(!hasQuestions);
+                if (lblQuestionsSummary != null) {
+                    if (hasQuestions) {
+                        lblQuestionsSummary.setText(resp.questions().size() + " question(s) analysée(s)");
+                    } else {
+                        lblQuestionsSummary.setText("");
+                    }
+                }
+                updateQuestionsFilterPredicate();
+
                 updateFilterPredicate();
 
                 evaluationService.getEvaluation(evaluationId);
@@ -867,6 +1062,11 @@ public class CorrectionViewController implements Initializable {
 
     private void clearDashboard() {
         studentGradesList.clear();
+        questionStatisticsList.clear();
+        if (txtSearchQuestion != null) txtSearchQuestion.clear();
+        if (btnExportQuestionsExcel != null) btnExportQuestionsExcel.setDisable(true);
+        if (lblQuestionsSummary != null) lblQuestionsSummary.setText("");
+
         lblTotalCopies.setText("0");
         lblAverage.setText("-");
         lblMin.setText("-");
@@ -941,7 +1141,7 @@ public class CorrectionViewController implements Initializable {
         chooser.setInitialFileName("Notes_" + eval.getDesignation().replaceAll("[^a-zA-Z0-9_-]", "_") + ".xlsx");
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Fichier Excel (*.xlsx)", "*.xlsx"));
 
-        File target = chooser.showSaveDialog(dropZone.getScene().getWindow());
+        File target = chooser.showSaveDialog(getWindow());
         if (target != null) {
             try {
                 documentService.exportGradesToExcel(currentGroup.getId(), eval.getId(), target);

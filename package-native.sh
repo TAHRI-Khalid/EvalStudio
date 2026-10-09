@@ -76,6 +76,8 @@ cp "$JAR_FILE" "$INPUT_DIR/eval_desktop.jar"
 
 DIST_DIR="dist"
 mkdir -p "$DIST_DIR"
+# Nettoyage préventif des bundles existants pour éviter 'destination directory already exists'
+rm -rf "$DIST_DIR/EvalStudio" "$DIST_DIR/EvalStudio.app"
 
 ICON_OPT=()
 if [ "$OS_FAMILY" = "macos" ] && [ -f "src/main/resources/icons/app-icon.icns" ]; then
@@ -101,7 +103,7 @@ echo "=== [4/4] Création du binaire natif ($PACKAGE_TYPE) avec jpackage ==="
     --name "EvalStudio" \
     --app-version "$APP_VERSION" \
     --vendor "Tahri" \
-    --description "Studio d'évaluation et de correction d'épreuves (Desktop)" \
+    --description "Studio d evaluation et correction d epreuves (Desktop)" \
     --input "$INPUT_DIR" \
     --main-jar "eval_desktop.jar" \
     --main-class "org.springframework.boot.loader.launch.JarLauncher" \

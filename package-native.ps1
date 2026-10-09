@@ -66,9 +66,15 @@ Copy-Item $JarFile (Join-Path $InputDir "eval_desktop.jar")
 $DistDir = "dist"
 if (-not (Test-Path $DistDir)) { New-Item -ItemType Directory -Path $DistDir | Out-Null }
 
+# Nettoyage préventif du bundle existant pour éviter les conflits
+if (Test-Path "$DistDir\EvalStudio") {
+    Remove-Item -Recurse -Force "$DistDir\EvalStudio"
+}
+
 $IconOpt = @()
 if (Test-Path "src\main\resources\icons\app-icon.ico") {
-    $IconOpt = @("--icon", "src\main\resources\icons\app-icon.ico")
+    $IconPath = (Resolve-Path "src\main\resources\icons\app-icon.ico").Path
+    $IconOpt = @("--icon", $IconPath)
 }
 
 $ExtraOpts = @()
@@ -82,14 +88,14 @@ $JpackageArgs = @(
     "--name", "EvalStudio",
     "--app-version", $CleanVersion,
     "--vendor", "Tahri",
-    "--description", "Studio d'évaluation et de correction d'épreuves (Desktop)",
-    "--input", $InputDir,
+    "--description", "Studio d evaluation et correction d epreuves Desktop",
+    "--input", (Resolve-Path $InputDir).Path,
     "--main-jar", "eval_desktop.jar",
     "--main-class", "org.springframework.boot.loader.launch.JarLauncher",
-    "--dest", $DistDir,
+    "--dest", (Resolve-Path $DistDir).Path,
     "--type", $PackageType,
-    "--java-options", "--enable-native-access=ALL-UNNAMED",
-    "--java-options", "-Dprism.verbose=false",
+    "--java-options=--enable-native-access=ALL-UNNAMED",
+    "--java-options=-Dprism.verbose=false",
     "--verbose"
 ) + $IconOpt + $ExtraOpts
 

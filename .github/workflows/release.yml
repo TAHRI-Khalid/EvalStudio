@@ -200,15 +200,15 @@ jobs:
         run: |
           chmod +x ./package-native.sh
           
-          # 1. Package DMG
-          ./package-native.sh dmg "${{ env.VERSION }}"
-          
-          # 2. Package App-image portable
+          # 1. Package App-image portable (.app)
           ./package-native.sh app-image "${{ env.VERSION }}"
           
           mkdir -p release-artifacts
-          find dist/ -type f -name "*.dmg" -exec cp {} release-artifacts/ \;
           tar -czf "release-artifacts/EvalStudio-macos-arm64-${{ env.VERSION }}.tar.gz" -C dist EvalStudio.app
+
+          # 2. Package DMG
+          ./package-native.sh dmg "${{ env.VERSION }}"
+          find dist/ -type f -name "*.dmg" -exec cp {} release-artifacts/ \;
 
       - name: Uploader les artefacts macOS
         uses: actions/upload-artifact@v4

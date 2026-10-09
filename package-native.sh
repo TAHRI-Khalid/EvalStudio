@@ -32,6 +32,14 @@ case "$OS_NAME" in
 esac
 echo "Système d'exploitation détecté : $OS_FAMILY ($OS_NAME)"
 
+# Règle Apple macOS : CFBundleVersion impose un premier numéro strictement positif (>= 1)
+JPACKAGE_VERSION="$APP_VERSION"
+FIRST_NUM=$(echo "$APP_VERSION" | cut -d. -f1)
+if [ "$OS_FAMILY" = "macos" ] && [ "$FIRST_NUM" = "0" ]; then
+    JPACKAGE_VERSION="1.${APP_VERSION#*.}"
+    echo "Avis macOS : Version interne CFBundleVersion ajustée à $JPACKAGE_VERSION (Apple exige un premier chiffre >= 1)"
+fi
+
 JPACKAGE_CMD=""
 if command -v jpackage &>/dev/null; then
     JPACKAGE_CMD="jpackage"
@@ -101,7 +109,7 @@ echo "=== [4/4] Création du binaire natif ($PACKAGE_TYPE) avec jpackage ==="
 
 "$JPACKAGE_CMD" \
     --name "EvalStudio" \
-    --app-version "$APP_VERSION" \
+    --app-version "$JPACKAGE_VERSION" \
     --vendor "Tahri" \
     --description "Studio d evaluation et correction d epreuves (Desktop)" \
     --input "$INPUT_DIR" \

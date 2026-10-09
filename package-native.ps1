@@ -12,7 +12,11 @@ $CleanVersion = $AppVersion.TrimStart("v").Split("-")[0]
 
 Write-Host "=== [1/4] Détection de jpackage et du JDK ===" -ForegroundColor Cyan
 
-$JpackageCmd = (Get-Command jpackage -ErrorAction SilentlyContinue)?.Source
+$JpackageCmd = $null
+$FoundCmd = Get-Command jpackage -ErrorAction SilentlyContinue
+if ($FoundCmd) {
+    $JpackageCmd = $FoundCmd.Source
+}
 if (-not $JpackageCmd -and $env:JAVA_HOME) {
     $Candidate = Join-Path $env:JAVA_HOME "bin\jpackage.exe"
     if (Test-Path $Candidate) {
@@ -94,8 +98,8 @@ $JpackageArgs = @(
     "--main-class", "org.springframework.boot.loader.launch.JarLauncher",
     "--dest", (Resolve-Path $DistDir).Path,
     "--type", $PackageType,
-    "--java-options=--enable-native-access=ALL-UNNAMED",
-    "--java-options=-Dprism.verbose=false",
+    "--java-options", "--enable-native-access=ALL-UNNAMED",
+    "--java-options", "-Dprism.verbose=false",
     "--verbose"
 ) + $IconOpt + $ExtraOpts
 

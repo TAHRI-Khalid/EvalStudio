@@ -38,6 +38,20 @@ public class CheckboxClassifier implements AutoCloseable {
     public synchronized void init() {
         try {
             Path path = Path.of(modelPath);
+            if (!Files.exists(path) || Files.size(path) == 0) {
+                try (var in = getClass().getResourceAsStream("/model/eval_model.onnx")) {
+                    if (in != null) {
+                        if (path.getParent() != null) {
+                            Files.createDirectories(path.getParent());
+                        }
+                        Files.copy(in, path, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                        log.info("Modèle ONNX extrait depuis le classpath vers : {}", path.toAbsolutePath());
+                    }
+                } catch (Exception ex) {
+                    log.warn("Impossible d'extraire le modèle ONNX depuis le classpath : {}", ex.getMessage());
+                }
+            }
+
             if (!Files.exists(path)) {
                 log.warn("Fichier modèle ONNX introuvable à : {}", path.toAbsolutePath());
                 return;

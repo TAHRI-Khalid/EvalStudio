@@ -20,20 +20,20 @@ public class ImageStorageService {
     private static final Logger log = LoggerFactory.getLogger(ImageStorageService.class);
 
     public enum ImageFolder {
-        GROUP_LOGOS(Path.of("upload", "group_logos_sm"), Path.of("upload", "group_logos_xm")),
-        COURSE_LOGOS(Path.of("upload", "course_logos_sm"), Path.of("upload", "course_logos_xm")),
-        QUESTION_IMAGES(Path.of("upload", "question_images"), Path.of("upload", "question_images"));
+        GROUP_LOGOS("group_logos_sm", "group_logos_xm"),
+        COURSE_LOGOS("course_logos_sm", "course_logos_xm"),
+        QUESTION_IMAGES("question_images", "question_images");
 
-        private final Path dirSm;
-        private final Path dirXm;
+        private final String subSm;
+        private final String subXm;
 
-        ImageFolder(Path dirSm, Path dirXm) {
-            this.dirSm = dirSm;
-            this.dirXm = dirXm;
+        ImageFolder(String subSm, String subXm) {
+            this.subSm = subSm;
+            this.subXm = subXm;
         }
 
-        public Path dirSm() { return dirSm; }
-        public Path dirXm() { return dirXm; }
+        public Path dirSm() { return tk.tahri.eval.desktop.config.AppPaths.getUploadDir().resolve(subSm); }
+        public Path dirXm() { return tk.tahri.eval.desktop.config.AppPaths.getUploadDir().resolve(subXm); }
     }
 
     public ImageStorageService() {

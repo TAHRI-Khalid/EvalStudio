@@ -1,0 +1,235 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version de release (ex: 0.1.0)'
+        required: true
+        default: '0.1.0'
+
+permissions:
+  contents: write
+
+jobs:
+  # --------------------------------------------------------------------------
+  # 1. BUILD LINUX & UNIVERSAL JAR
+  # --------------------------------------------------------------------------
+  build-linux:
+    name: Build Linux & Jar (${{ matrix.os }})
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Déterminer la version
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'oracle'
+          cache: maven
+
+      - name: Installer les dépendances d'empaquetage (deb & rpm)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fakeroot rpm
+
+      - name: Compiler le JAR universel
+        run: |
+          chmod +x ./mvnw
+          ./mvnw clean package -DskipTests
+
+      - name: Préparer le JAR autonome
+        run: |
+          mkdir -p release-artifacts
+          JAR_SRC=$(ls target/eval_desktop-*.jar | head -n 1)
+          cp "$JAR_SRC" "release-artifacts/eval_desktop-${{ env.VERSION }}.jar"
+
+      - name: Générer les paquets Linux (DEB, RPM, App-Image)
+        run: |
+          chmod +x ./package-native.sh
+          # Empaquetage DEB
+          ./package-native.sh deb "${{ env.VERSION }}"
+          # Empaquetage RPM
+          ./package-native.sh rpm "${{ env.VERSION }}"
+          # Empaquetage App-Image portable
+          ./package-native.sh app-image "${{ env.VERSION }}"
+
+          # Archive tar.gz du binaire portable
+          tar -czf "release-artifacts/EvalStudio-linux-x64-${{ env.VERSION }}.tar.gz" -C dist EvalStudio
+
+          # Copie des paquets DEB et RPM
+          find dist/ -type f \( -name "*.deb" -o -name "*.rpm" \) -exec cp {} release-artifacts/ \;
+
+      - name: Uploader les artefacts Linux & Jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-artifacts
+          path: release-artifacts/*
+
+  # --------------------------------------------------------------------------
+  # 2. BUILD WINDOWS (MSI & ZIP portable)
+  # --------------------------------------------------------------------------
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Déterminer la version
+        id: get_version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'oracle'
+          cache: maven
+
+      - name: Compiler le projet
+        shell: cmd
+        run: |
+          mvnw.cmd clean package -DskipTests
+
+      - name: Générer le package Windows MSI et Portable
+        shell: powershell
+        run: |
+          # Packaging MSI
+          powershell -ExecutionPolicy Bypass -File .\package-native.ps1 -PackageType msi -AppVersion "${{ env.VERSION }}"
+          # Packaging App-Image
+          powershell -ExecutionPolicy Bypass -File .\package-native.ps1 -PackageType app-image -AppVersion "${{ env.VERSION }}"
+
+          New-Item -ItemType Directory -Path release-artifacts -Force | Out-Null
+          
+          # Compression du bundle portable
+          Compress-Archive -Path dist\EvalStudio -DestinationPath "release-artifacts\EvalStudio-windows-x64-${{ env.VERSION }}.zip" -Force
+          
+          # Copie du MSI
+          Get-ChildItem -Path dist\*.msi | Copy-Item -Destination release-artifacts\
+
+      - name: Uploader les artefacts Windows
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-artifacts
+          path: release-artifacts/*
+
+  # --------------------------------------------------------------------------
+  # 3. BUILD MACOS (DMG & TAR.GZ portable)
+  # --------------------------------------------------------------------------
+  build-macos:
+    name: Build macOS
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Déterminer la version
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'oracle'
+          cache: maven
+
+      - name: Compiler le projet
+        run: |
+          chmod +x ./mvnw
+          ./mvnw clean package -DskipTests
+
+      - name: Générer le package macOS DMG
+        run: |
+          chmod +x ./package-native.sh
+          ./package-native.sh dmg "${{ env.VERSION }}"
+          
+          mkdir -p release-artifacts
+          find dist/ -type f -name "*.dmg" -exec cp {} release-artifacts/ \;
+
+      - name: Uploader les artefacts macOS
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-artifacts
+          path: release-artifacts/*
+
+  # --------------------------------------------------------------------------
+  # 4. PUBLICATION DE LA RELEASE GITHUB
+  # --------------------------------------------------------------------------
+  publish-release:
+    name: Publish Release on GitHub
+    needs: [build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Déterminer la version et le nom de tag
+        id: get_tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="v${{ github.event.inputs.version }}"
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+            VERSION="${TAG#v}"
+          fi
+          echo "TAG=$TAG" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Télécharger tous les artefacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-artifacts
+
+      - name: Consolider et calculer les sommes de contrôle SHA256
+        run: |
+          mkdir -p dist-release
+          find all-artifacts -type f -exec cp {} dist-release/ \;
+          
+          cd dist-release
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          cd ..
+
+      - name: Créer ou mettre à jour la Release GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: "EvalStudio ${{ env.TAG }}"
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            dist-release/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

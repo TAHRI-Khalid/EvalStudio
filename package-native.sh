@@ -2,16 +2,37 @@
 set -e
 
 # ==============================================================================
-# Script de packaging natif avec jpackage pour EVAL Desktop
+# Script de packaging natif avec jpackage pour EvalStudio (Multi-OS)
+# Support : Linux (deb, rpm, app-image), macOS (dmg, pkg, app-image), Windows (msi, exe, app-image)
 # ==============================================================================
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$PROJECT_DIR"
 
-echo "=== [1/4] Détection de jpackage et du JDK ==="
+PACKAGE_TYPE="${1:-app-image}"
+APP_VERSION="${2:-0.1.0}"
+
+# Nettoyage de la version pour jpackage (ex: "v1.0.0" -> "1.0.0", "1.0.0-SNAPSHOT" -> "1.0.0")
+APP_VERSION="${APP_VERSION#v}"
+APP_VERSION="${APP_VERSION%%-*}"
+
+echo "=== [1/4] Détection de l'OS et de jpackage ==="
+
+OS_NAME="$(uname -s)"
+case "$OS_NAME" in
+    Darwin*)
+        OS_FAMILY="macos"
+        ;;
+    MINGW*|MSYS*|CYGWIN*)
+        OS_FAMILY="windows"
+        ;;
+    *)
+        OS_FAMILY="linux"
+        ;;
+esac
+echo "Système d'exploitation détecté : $OS_FAMILY ($OS_NAME)"
 
 JPACKAGE_CMD=""
-
 if command -v jpackage &>/dev/null; then
     JPACKAGE_CMD="jpackage"
 elif [ -n "$JAVA_HOME" ] && [ -x "$JAVA_HOME/bin/jpackage" ]; then
@@ -23,27 +44,22 @@ elif [ -x "/usr/lib/jvm/java-openjdk/bin/jpackage" ]; then
 fi
 
 if [ -z "$JPACKAGE_CMD" ]; then
-    echo "ERREUR : 'jpackage' n'a pas été trouvé sur votre système."
-    echo ""
-    echo "Pour l'installer sur Fedora Linux, exécutez :"
-    echo "    sudo dnf install -y java-25-openjdk-devel"
-    echo ""
-    echo "Sur Ubuntu / Debian :"
-    echo "    sudo apt-get install -y openjdk-25-jdk"
-    echo ""
+    echo "ERREUR : 'jpackage' n'a pas été trouvé."
+    echo "Assurez-vous qu'un JDK 25+ est installé et que JAVA_HOME est configuré."
     exit 1
 fi
 
 echo "Utilisation de jpackage : $($JPACKAGE_CMD --version 2>&1 | head -n 1) ($JPACKAGE_CMD)"
-
-# Détermine le type de packaging : "app-image" (dossier binaire autonome), "rpm", ou "deb"
-PACKAGE_TYPE="${1:-app-image}"
+echo "Type de paquet demandé  : $PACKAGE_TYPE"
+echo "Version de l'application : $APP_VERSION"
 
 echo "=== [2/4] Compilation et création de l'archive JAR ==="
-if [ -x "./mvnw" ]; then
-    ./mvnw clean package -DskipTests
-else
-    mvn clean package -DskipTests
+if [ ! -f "target/eval_desktop-*.jar" ] && [ "${SKIP_BUILD:-false}" != "true" ]; then
+    if [ -x "./mvnw" ]; then
+        ./mvnw clean package -DskipTests
+    else
+        mvn clean package -DskipTests
+    fi
 fi
 
 echo "=== [3/4] Préparation des artefacts d'entrée ==="
@@ -51,27 +67,39 @@ INPUT_DIR="target/jpackage-input"
 rm -rf "$INPUT_DIR"
 mkdir -p "$INPUT_DIR"
 
-cp target/eval_desktop-*.jar "$INPUT_DIR/eval_desktop.jar"
+JAR_FILE=$(ls target/eval_desktop-*.jar | head -n 1)
+if [ -z "$JAR_FILE" ]; then
+    echo "ERREUR : Aucun fichier JAR trouvé dans target/"
+    exit 1
+fi
+cp "$JAR_FILE" "$INPUT_DIR/eval_desktop.jar"
 
 DIST_DIR="dist"
-rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR"
 
 ICON_OPT=()
-if [ -f "src/main/resources/icons/app-icon.png" ]; then
+if [ "$OS_FAMILY" = "macos" ] && [ -f "src/main/resources/icons/app-icon.icns" ]; then
+    ICON_OPT=(--icon "src/main/resources/icons/app-icon.icns")
+elif [ "$OS_FAMILY" = "windows" ] && [ -f "src/main/resources/icons/app-icon.ico" ]; then
+    ICON_OPT=(--icon "src/main/resources/icons/app-icon.ico")
+elif [ -f "src/main/resources/icons/app-icon.png" ]; then
     ICON_OPT=(--icon "src/main/resources/icons/app-icon.png")
 fi
 
 EXTRA_OPTS=()
-if [ "$PACKAGE_TYPE" != "app-image" ]; then
-    EXTRA_OPTS=(--linux-shortcut --linux-menu-group "Education;Office;")
+if [ "$OS_FAMILY" = "linux" ] && [ "$PACKAGE_TYPE" != "app-image" ]; then
+    EXTRA_OPTS=(--linux-shortcut --linux-menu-group "Education;Office;" --linux-package-name "evalstudio")
+elif [ "$OS_FAMILY" = "macos" ]; then
+    EXTRA_OPTS=(--mac-package-name "EvalStudio" --mac-package-identifier "tk.tahri.evalstudio")
+elif [ "$OS_FAMILY" = "windows" ] && [ "$PACKAGE_TYPE" != "app-image" ]; then
+    EXTRA_OPTS=(--win-menu --win-shortcut --win-dir-chooser)
 fi
 
 echo "=== [4/4] Création du binaire natif ($PACKAGE_TYPE) avec jpackage ==="
 
 "$JPACKAGE_CMD" \
     --name "EvalStudio" \
-    --app-version "1.0.0" \
+    --app-version "$APP_VERSION" \
     --vendor "Tahri" \
     --description "Studio d'évaluation et de correction d'épreuves (Desktop)" \
     --input "$INPUT_DIR" \
@@ -88,8 +116,4 @@ echo ""
 echo "=============================================================================="
 echo " Packaging natif terminé avec succès !"
 echo " Emplacement : $PROJECT_DIR/$DIST_DIR"
-if [ "$PACKAGE_TYPE" = "app-image" ]; then
-    echo " Pour lancer l'application :"
-    echo "    $PROJECT_DIR/$DIST_DIR/EvalStudio/bin/EvalStudio"
-fi
 echo "=============================================================================="

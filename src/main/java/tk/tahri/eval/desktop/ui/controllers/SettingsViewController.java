@@ -41,7 +41,7 @@ public class SettingsViewController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        File dbFile = new File("data/evaldb.mv.db");
+        File dbFile = tk.tahri.eval.desktop.config.AppPaths.getDataDir().resolve("evaldb.mv.db").toFile();
         lblDbPath.setText(dbFile.getAbsolutePath());
         if (dbFile.exists()) {
             lblDbSize.setText((dbFile.length() / 1024) + " Ko");

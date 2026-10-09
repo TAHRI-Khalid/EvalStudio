@@ -1,0 +1,84 @@
+param (
+    [string]$PackageType = "msi",
+    [string]$AppVersion = "0.1.0"
+)
+
+$ErrorActionPreference = "Stop"
+$ProjectDir = $PSScriptRoot
+Set-Location $ProjectDir
+
+# Nettoyage de la version (ex: "v1.0.0" -> "1.0.0", "1.0.0-SNAPSHOT" -> "1.0.0")
+$CleanVersion = $AppVersion.TrimStart("v").Split("-")[0]
+
+Write-Host "=== [1/4] Détection de jpackage et du JDK ===" -ForegroundColor Cyan
+
+$JpackageCmd = (Get-Command jpackage -ErrorAction SilentlyContinue)?.Source
+if (-not $JpackageCmd -and $env:JAVA_HOME) {
+    $Candidate = Join-Path $env:JAVA_HOME "bin\jpackage.exe"
+    if (Test-Path $Candidate) {
+        $JpackageCmd = $Candidate
+    }
+}
+
+if (-not $JpackageCmd) {
+    Write-Error "ERREUR : 'jpackage' n'a pas été trouvé. Assurez-vous d'avoir installé un JDK 25+ et configuré JAVA_HOME."
+    exit 1
+}
+
+Write-Host "Utilisation de jpackage : $JpackageCmd"
+Write-Host "Type de paquet          : $PackageType"
+Write-Host "Version                 : $CleanVersion"
+
+Write-Host "=== [2/4] Compilation et création de l'archive JAR ===" -ForegroundColor Cyan
+$JarFiles = Get-ChildItem -Path "target\eval_desktop-*.jar" -ErrorAction SilentlyContinue
+if (-not $JarFiles) {
+    if (Test-Path ".\mvnw.cmd") {
+        .\mvnw.cmd clean package -DskipTests
+    } else {
+        mvn clean package -DskipTests
+    }
+}
+
+Write-Host "=== [3/4] Préparation des artefacts d'entrée ===" -ForegroundColor Cyan
+$InputDir = "target\jpackage-input"
+if (Test-Path $InputDir) { Remove-Item -Recurse -Force $InputDir }
+New-Item -ItemType Directory -Path $InputDir | Out-Null
+
+$JarFile = (Get-ChildItem -Path "target\eval_desktop-*.jar" | Select-Object -First 1).FullName
+Copy-Item $JarFile (Join-Path $InputDir "eval_desktop.jar")
+
+$DistDir = "dist"
+if (-not (Test-Path $DistDir)) { New-Item -ItemType Directory -Path $DistDir | Out-Null }
+
+$IconOpt = @()
+if (Test-Path "src\main\resources\icons\app-icon.ico") {
+    $IconOpt = @("--icon", "src\main\resources\icons\app-icon.ico")
+}
+
+$ExtraOpts = @()
+if ($PackageType -ne "app-image") {
+    $ExtraOpts = @("--win-menu", "--win-shortcut", "--win-dir-chooser")
+}
+
+Write-Host "=== [4/4] Création du paquet natif ($PackageType) avec jpackage ===" -ForegroundColor Cyan
+
+$JpackageArgs = @(
+    "--name", "EvalStudio",
+    "--app-version", $CleanVersion,
+    "--vendor", "Tahri",
+    "--description", "Studio d'évaluation et de correction d'épreuves (Desktop)",
+    "--input", $InputDir,
+    "--main-jar", "eval_desktop.jar",
+    "--main-class", "org.springframework.boot.loader.launch.JarLauncher",
+    "--dest", $DistDir,
+    "--type", $PackageType,
+    "--java-options", "--enable-native-access=ALL-UNNAMED",
+    "--java-options", "-Dprism.verbose=false"
+) + $IconOpt + $ExtraOpts
+
+& $JpackageCmd @JpackageArgs
+
+Write-Host "==============================================================================" -ForegroundColor Green
+Write-Host " Packaging Windows terminé avec succès !" -ForegroundColor Green
+Write-Host " Emplacement : $ProjectDir\$DistDir" -ForegroundColor Green
+Write-Host "==============================================================================" -ForegroundColor Green

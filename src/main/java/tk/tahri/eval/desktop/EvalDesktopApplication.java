@@ -35,6 +35,11 @@ public class EvalDesktopApplication extends Application {
     private ConfigurableApplicationContext springContext;
 
     @Override
+    public void init() {
+        tk.tahri.eval.desktop.config.AppPaths.init();
+    }
+
+    @Override
     public void start(Stage primaryStage) {
         // Applique le thème immédiatement
         Application.setUserAgentStylesheet(new PrimerLight().getUserAgentStylesheet());

@@ -5,7 +5,7 @@
 
 <VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="tk.tahri.eval.desktop.ui.controllers.GroupWorkspaceViewController"
-      spacing="0" VBox.vgrow="ALWAYS" style="-fx-padding: 14 24 20 24; -fx-background-color: #f7f9ff;">
+      spacing="0" VBox.vgrow="ALWAYS" style="-fx-padding: 14 24 0 24; -fx-background-color: #f7f9ff;">
 
     <!-- TabPane regroupant Étudiants, Évaluations et Correction -->
     <TabPane fx:id="workspaceTabPane" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS"

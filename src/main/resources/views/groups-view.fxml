@@ -18,7 +18,7 @@
                     <Label fx:id="lblGroupCount" text="0 groupe(s)" styleClass="tag-badge"
                            style="-fx-font-size: 11px; -fx-font-weight: 600;"/>
                 </HBox>
-                <Label text="Gérez vos groupes, vos évaluations et vos étudiants • Double-cliquez pour ouvrir les évaluations" styleClass="page-subtitle"/>
+                <Label text="Gérez vos groupes, vos évaluations et vos étudiants • Cliquez sur une carte pour accéder au contenu" styleClass="page-subtitle"/>
             </VBox>
             <TextField fx:id="searchField" promptText="Rechercher par nom, filière, établissement..." prefWidth="280" styleClass="search-field"/>
             <Button fx:id="btnNewGroup" text="Nouveau groupe" styleClass="btn-primary" onAction="#onNewGroup"/>

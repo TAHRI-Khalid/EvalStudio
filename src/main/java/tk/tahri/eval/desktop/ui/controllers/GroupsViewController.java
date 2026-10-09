@@ -11,6 +11,7 @@ import javafx.geometry.Side;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.*;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
@@ -288,11 +289,14 @@ public class GroupsViewController implements Initializable {
 
         footer.getChildren().addAll(btnStudents, btnEvals, spacer, btnMenu);
 
+        // Empêcher les clics dans le pied de carte (boutons d'action) de déclencher le clic de la carte
+        footer.setOnMouseClicked(javafx.event.Event::consume);
+
         card.getChildren().addAll(banner, avatarContainer, body, footer);
 
-        // Double clic sur la carte pour ouvrir directement les évaluations
+        // Un seul clic sur la carte suffit pour accéder au contenu
         card.setOnMouseClicked(event -> {
-            if (event.getClickCount() == 2) {
+            if (event.getButton() == MouseButton.PRIMARY) {
                 mainLayoutController.showEvaluationsForGroup(group.getId());
             }
         });

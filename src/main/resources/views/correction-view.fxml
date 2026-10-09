@@ -87,32 +87,6 @@
             </VBox>
         </HBox>
 
-        <!-- Répartition visuelle des notes -->
-        <HBox spacing="16" alignment="CENTER_LEFT" styleClass="card-box" style="-fx-padding: 8 16; -fx-background-color: -color-bg-subtle;">
-            <Label text="Répartition :" style="-fx-font-weight: bold; -fx-font-size: 12px;"/>
-            <HBox spacing="6" alignment="CENTER_LEFT">
-                <Label text="0-5 :" style="-fx-font-size: 11px; -fx-text-fill: -color-fg-muted;"/>
-                <Label fx:id="lblDist0to5" text="0" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #ba1a1a;"/>
-            </HBox>
-            <Separator orientation="VERTICAL"/>
-            <HBox spacing="6" alignment="CENTER_LEFT">
-                <Label text="5-10 :" style="-fx-font-size: 11px; -fx-text-fill: -color-fg-muted;"/>
-                <Label fx:id="lblDist5to10" text="0" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #b45309;"/>
-            </HBox>
-            <Separator orientation="VERTICAL"/>
-            <HBox spacing="6" alignment="CENTER_LEFT">
-                <Label text="10-15 :" style="-fx-font-size: 11px; -fx-text-fill: -color-fg-muted;"/>
-                <Label fx:id="lblDist10to15" text="0" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #004faa;"/>
-            </HBox>
-            <Separator orientation="VERTICAL"/>
-            <HBox spacing="6" alignment="CENTER_LEFT">
-                <Label text="15-20 :" style="-fx-font-size: 11px; -fx-text-fill: -color-fg-muted;"/>
-                <Label fx:id="lblDist15to20" text="0" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #1b8744;"/>
-            </HBox>
-            <Pane HBox.hgrow="ALWAYS"/>
-            <Label text="Réussite :" style="-fx-font-size: 11px; -fx-text-fill: -color-fg-muted;"/>
-            <ProgressBar fx:id="progressSuccessRate" prefWidth="120" progress="0.0"/>
-        </HBox>
 
         <!-- Onglets du tableau de bord (prend tout l'espace restant) -->
         <TabPane fx:id="dashboardTabPane" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS"

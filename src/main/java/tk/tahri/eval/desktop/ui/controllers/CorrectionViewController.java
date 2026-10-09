@@ -82,11 +82,6 @@ public class CorrectionViewController implements Initializable {
     @FXML private Label lblTotalCopies;
     @FXML private Label lblSuccessRate;
     @FXML private Label lblMedianStd;
-    @FXML private Label lblDist0to5;
-    @FXML private Label lblDist5to10;
-    @FXML private Label lblDist10to15;
-    @FXML private Label lblDist15to20;
-    @FXML private ProgressBar progressSuccessRate;
     @FXML private TextField txtSearchGrade;
     @FXML private Button btnFilterAll;
     @FXML private Button btnFilterPassed;
@@ -1026,16 +1021,10 @@ public class CorrectionViewController implements Initializable {
                             lblSuccessRate.setStyle("-fx-text-fill: -color-danger-emphasis; -fx-font-weight: 800;");
                         }
                     }
-                    if (progressSuccessRate != null) {
-                        progressSuccessRate.setProgress(rate / 100.0);
-                    }
                 } else {
                     if (lblSuccessRate != null) {
                         lblSuccessRate.setText("-");
                         lblSuccessRate.setStyle("");
-                    }
-                    if (progressSuccessRate != null) {
-                        progressSuccessRate.setProgress(0.0);
                     }
                 }
 
@@ -1052,17 +1041,6 @@ public class CorrectionViewController implements Initializable {
                         lblMedianStd.setText("-");
                     }
                 }
-
-                // Répartition des notes par tranches
-                long d0to5 = resp.students().stream().filter(s -> s.score() != null && s.score() < 5.0).count();
-                long d5to10 = resp.students().stream().filter(s -> s.score() != null && s.score() >= 5.0 && s.score() < 10.0).count();
-                long d10to15 = resp.students().stream().filter(s -> s.score() != null && s.score() >= 10.0 && s.score() < 15.0).count();
-                long d15to20 = resp.students().stream().filter(s -> s.score() != null && s.score() >= 15.0).count();
-
-                if (lblDist0to5 != null) lblDist0to5.setText(String.valueOf(d0to5));
-                if (lblDist5to10 != null) lblDist5to10.setText(String.valueOf(d5to10));
-                if (lblDist10to15 != null) lblDist10to15.setText(String.valueOf(d10to15));
-                if (lblDist15to20 != null) lblDist15to20.setText(String.valueOf(d15to20));
 
                 boolean hasGrades = !resp.students().isEmpty();
                 if (btnExportExcel != null) btnExportExcel.setDisable(!hasGrades);
@@ -1108,11 +1086,6 @@ public class CorrectionViewController implements Initializable {
             lblSuccessRate.setStyle("");
         }
         if (lblMedianStd != null) lblMedianStd.setText("-");
-        if (lblDist0to5 != null) lblDist0to5.setText("0");
-        if (lblDist5to10 != null) lblDist5to10.setText("0");
-        if (lblDist10to15 != null) lblDist10to15.setText("0");
-        if (lblDist15to20 != null) lblDist15to20.setText("0");
-        if (progressSuccessRate != null) progressSuccessRate.setProgress(0.0);
         if (txtSearchGrade != null) txtSearchGrade.clear();
         currentFilter = GradeFilter.ALL;
         updateFilterButtonStyles();

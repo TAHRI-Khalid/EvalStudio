@@ -7,7 +7,7 @@
 
 <VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="tk.tahri.eval.desktop.ui.controllers.EvaluationBuilderController"
-      spacing="16" VBox.vgrow="ALWAYS" style="-fx-padding: 24 32 32 32;">
+      spacing="16" VBox.vgrow="ALWAYS" style="-fx-padding: 24 32 0 32;">
 
     <!-- En-tête -->
     <HBox alignment="CENTER_LEFT" spacing="12" styleClass="view-header">

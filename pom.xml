@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>tk.tahri</groupId>
 	<artifactId>eval_desktop</artifactId>
-	<version>0.1.0</version>
+	<version>0.1.1</version>
 	<name>eval_desktop</name>
 	<description>Application Desktop autonome d'évaluation et de correction d'épreuves (JavaFX + Spring Boot + H2)</description>
 

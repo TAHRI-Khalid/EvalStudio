@@ -166,8 +166,8 @@ public class DocumentProcessingService {
     }
 
     private ProcessingResult loadAndProcessPages(String groupId, Path evalDir, String evaluationId,
-                                                int totalExpected,
-                                                TaskProgressTracker tracker) throws IOException {
+                                                 int totalExpected,
+                                                 TaskProgressTracker tracker) throws IOException {
         var path = evalDir.resolve("pages");
 
         try (var filesStream = Files.list(path)) {
@@ -467,11 +467,14 @@ public class DocumentProcessingService {
         double hyp = Math.max(d12, Math.max(d13, d23));
         double sideA, sideB;
         if (hyp == d23) {
-            sideA = d12; sideB = d13;
+            sideA = d12;
+            sideB = d13;
         } else if (hyp == d13) {
-            sideA = d12; sideB = d23;
+            sideA = d12;
+            sideB = d23;
         } else {
-            sideA = d13; sideB = d23;
+            sideA = d13;
+            sideB = d23;
         }
 
         double ratio = Math.abs((sideA * sideA + sideB * sideB) - (hyp * hyp)) / (hyp * hyp);
@@ -656,6 +659,8 @@ public class DocumentProcessingService {
 
     private Mat safeCrop28(Mat page, int x, int y) {
         if (x >= 0 && y >= 0 && x + 28 <= page.cols() && y + 28 <= page.rows()) {
+            //Save Image
+            //Imgcodecs.imwrite("upload/data/" + UUID.randomUUID() + ".png", roi);
             return page.submat(new Rect(x, y, 28, 28));
         }
         Mat fallback = new Mat(28, 28, CvType.CV_8UC1, new Scalar(255));
@@ -687,9 +692,11 @@ public class DocumentProcessingService {
             final var end = getY(question.blueprintAnswers.getLast()) - 6;
             var state = question.state != null ? question.state : tk.tahri.eval.desktop.document.entities.blueprint.QuestionState.EMPTY;
             switch (state) {
-                case CORRECT -> drawLineAndMark(colorMat, x, start, end, new Scalar(0, 255, 0), question.scoreIfCorrect);
+                case CORRECT ->
+                        drawLineAndMark(colorMat, x, start, end, new Scalar(0, 255, 0), question.scoreIfCorrect);
                 case EMPTY -> drawLineAndMark(colorMat, x, start, end, new Scalar(0, 140, 255), question.scoreIfEmpty);
-                case INCORRECT -> drawLineAndMark(colorMat, x, start, end, new Scalar(0, 0, 255), question.scoreIfIncorrect);
+                case INCORRECT ->
+                        drawLineAndMark(colorMat, x, start, end, new Scalar(0, 0, 255), question.scoreIfIncorrect);
             }
         });
 

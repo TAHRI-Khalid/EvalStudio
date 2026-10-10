@@ -45,7 +45,8 @@ Les versions précompilées sont disponibles dans l'onglet [**Releases**](https:
 | Plateforme | Format d'installation | Instructions |
 | :--- | :--- | :--- |
 | **Windows** | `.msi` / `.exe` | Téléchargez l'installateur et suivez l'assistant d'installation. |
-| **macOS** | `.dmg` | Glissez l'application dans le dossier `Applications`. *(Au premier lancement : clic-droit > Ouvrir)* |
+| **macOS (Apple Silicon)** | `.dmg` / `.tar.gz` (`arm64`) | Glissez l'application dans le dossier `Applications`. *(Au premier lancement : clic-droit > Ouvrir)* |
+| **macOS (Intel)** | `.dmg` / `.tar.gz` (`x64`) | Glissez l'application dans le dossier `Applications`. *(Au premier lancement : clic-droit > Ouvrir)* |
 | **Linux** | `.deb` / `.rpm` / `.tar.gz` | Installez via votre gestionnaire de paquets (`sudo dpkg -i ...` ou `sudo rpm -i ...`). |
 | **Universel** | `.jar` | Exécutable multi-OS nécessitant Java 25 (`java -jar eval_desktop.jar`). |
 

@@ -64,17 +64,12 @@ jobs:
           SKIP_BUILD: "true"
         run: |
           chmod +x ./package-native.sh
-          # Empaquetage DEB
           ./package-native.sh deb "${{ env.VERSION }}"
-          # Empaquetage RPM
           ./package-native.sh rpm "${{ env.VERSION }}"
-          # Empaquetage App-Image portable
           ./package-native.sh app-image "${{ env.VERSION }}"
 
-          # Archive tar.gz du binaire portable
           tar -czf "release-artifacts/EvalStudio-linux-x64-${{ env.VERSION }}.tar.gz" -C dist EvalStudio
 
-          # Copie des paquets DEB et RPM
           find dist/ -type f \( -name "*.deb" -o -name "*.rpm" \) -exec cp {} release-artifacts/ \;
 
       - name: Uploader les artefacts Linux & Jar
@@ -149,11 +144,13 @@ jobs:
           path: release-artifacts/*
 
   # --------------------------------------------------------------------------
-  # 3. BUILD MACOS (DMG & TAR.GZ portable)
+  # 3. BUILD MACOS APPLE SILICON (ARM64)
   # --------------------------------------------------------------------------
-  build-macos:
-    name: Build macOS
-    runs-on: macos-latest
+  # GitHub-hosted runners currently expose explicit arm64 labels such as `macos-15`.
+  # This ensures the ARM64 artifact is built on the correct architecture.
+  build-macos-arm64:
+    name: Build macOS ARM64
+    runs-on: macos-15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -175,6 +172,37 @@ jobs:
           distribution: 'oracle'
           cache: maven
 
+      - name: Validate ARM64 architecture
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Runner architecture:"
+          uname -m
+
+          echo "Java version:"
+          java -version
+
+          echo "Java architecture:"
+          java -XshowSettings:properties -version 2>&1 | grep -E 'os.arch|java.home'
+
+          RUNNER_ARCH="$(uname -m)"
+          JAVA_ARCH="$(java -XshowSettings:properties -version 2>&1 | awk -F'= ' '/os.arch =/ {print $2; exit}')"
+
+          if [ "$RUNNER_ARCH" != "arm64" ]; then
+            echo "ERROR: Expected an ARM64 runner, got: $RUNNER_ARCH"
+            exit 1
+          fi
+
+          case "$JAVA_ARCH" in
+            aarch64|arm64)
+              ;;
+            *)
+              echo "ERROR: Expected an ARM64 JDK, got: $JAVA_ARCH"
+              exit 1
+              ;;
+          esac
+
       - name: Générer l'icône native Apple (.icns)
         run: |
           mkdir -p EvalStudio.iconset
@@ -194,34 +222,156 @@ jobs:
           chmod +x ./mvnw
           ./mvnw clean package -DskipTests
 
-      - name: Générer les packages macOS (DMG et App portable)
+      - name: Générer les packages macOS ARM64
         env:
           SKIP_BUILD: "true"
         run: |
+          set -euo pipefail
           chmod +x ./package-native.sh
-          
-          # 1. Package App-image portable (.app)
-          ./package-native.sh app-image "${{ env.VERSION }}"
-          
           mkdir -p release-artifacts
-          tar -czf "release-artifacts/EvalStudio-macos-arm64-${{ env.VERSION }}.tar.gz" -C dist EvalStudio.app
 
-          # 2. Package DMG
+          ./package-native.sh app-image "${{ env.VERSION }}"
+
+          tar -czf \
+            "release-artifacts/EvalStudio-macos-arm64-${{ env.VERSION }}.tar.gz" \
+            -C dist EvalStudio.app
+
           ./package-native.sh dmg "${{ env.VERSION }}"
-          find dist/ -type f -name "*.dmg" -exec cp {} release-artifacts/ \;
 
-      - name: Uploader les artefacts macOS
+          ARM64_DMG="$(find dist/ -maxdepth 1 -type f -name '*.dmg' | head -n 1)"
+          if [ -z "$ARM64_DMG" ]; then
+            echo "ERROR: ARM64 DMG was not created"
+            exit 1
+          fi
+
+          cp "$ARM64_DMG" \
+            "release-artifacts/EvalStudio-macos-arm64-${{ env.VERSION }}.dmg"
+
+      - name: Uploader les artefacts macOS ARM64
         uses: actions/upload-artifact@v4
         with:
-          name: macos-artifacts
+          name: macos-arm64-artifacts
           path: release-artifacts/*
 
   # --------------------------------------------------------------------------
-  # 4. PUBLICATION DE LA RELEASE GITHUB
+  # 4. BUILD MACOS INTEL (X86_64)
+  # --------------------------------------------------------------------------
+  # GitHub-hosted Intel macOS runner label currently available for x86_64 builds.
+  build-macos-x64:
+    name: Build macOS Intel x86_64
+    runs-on: macos-15-intel
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Déterminer la version
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Set up Intel JDK 25
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'oracle'
+          cache: maven
+
+      - name: Validate Intel x86_64 architecture
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Runner architecture:"
+          uname -m
+
+          echo "Java version:"
+          java -version
+
+          echo "Java architecture:"
+          java -XshowSettings:properties -version 2>&1 | grep -E 'os.arch|java.home'
+
+          RUNNER_ARCH="$(uname -m)"
+          JAVA_ARCH="$(java -XshowSettings:properties -version 2>&1 | awk -F'= ' '/os.arch =/ {print $2; exit}')"
+
+          if [ "$RUNNER_ARCH" != "x86_64" ]; then
+            echo "ERROR: Expected an Intel x86_64 runner, got: $RUNNER_ARCH"
+            exit 1
+          fi
+
+          case "$JAVA_ARCH" in
+            x86_64|amd64|x64)
+              ;;
+            *)
+              echo "ERROR: Expected an Intel x86_64 JDK, got: $JAVA_ARCH"
+              exit 1
+              ;;
+          esac
+
+      - name: Générer l'icône native Apple (.icns)
+        run: |
+          mkdir -p EvalStudio.iconset
+          sips -z 16 16     src/main/resources/icons/app-icon.png --out EvalStudio.iconset/icon_16x16.png
+          sips -z 32 32     src/main/resources/icons/app-icon.png --out EvalStudio.iconset/icon_16x16@2x.png
+          sips -z 32 32     src/main/resources/icons/app-icon.png --out EvalStudio.iconset/icon_32x32.png
+          sips -z 64 64     src/main/resources/icons/app-icon.png --out EvalStudio.iconset/icon_32x32@2x.png
+          sips -z 128 128   src/main/resources/icons/app-icon.png --out EvalStudio.iconset/icon_128x128.png
+          sips -z 256 256   src/main/resources/icons/app-icon.png --out EvalStudio.iconset/icon_128x128@2x.png
+          sips -z 256 256   src/main/resources/icons/app-icon.png --out EvalStudio.iconset/icon_256x256.png
+          sips -z 512 512   src/main/resources/icons/app-icon.png --out EvalStudio.iconset/icon_256x256@2x.png
+          iconutil -c icns EvalStudio.iconset -o src/main/resources/icons/app-icon.icns
+          rm -rf EvalStudio.iconset
+
+      - name: Compiler le projet
+        run: |
+          chmod +x ./mvnw
+          ./mvnw clean package -DskipTests
+
+      - name: Générer les packages macOS Intel
+        env:
+          SKIP_BUILD: "true"
+        run: |
+          set -euo pipefail
+          chmod +x ./package-native.sh
+          mkdir -p release-artifacts
+
+          ./package-native.sh app-image "${{ env.VERSION }}"
+
+          tar -czf \
+            "release-artifacts/EvalStudio-macos-x64-${{ env.VERSION }}.tar.gz" \
+            -C dist EvalStudio.app
+
+          ./package-native.sh dmg "${{ env.VERSION }}"
+
+          X64_DMG="$(find dist/ -maxdepth 1 -type f -name '*.dmg' | head -n 1)"
+          if [ -z "$X64_DMG" ]; then
+            echo "ERROR: Intel x86_64 DMG was not created"
+            exit 1
+          fi
+
+          cp "$X64_DMG" \
+            "release-artifacts/EvalStudio-macos-x64-${{ env.VERSION }}.dmg"
+
+      - name: Uploader les artefacts macOS Intel
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-x64-artifacts
+          path: release-artifacts/*
+
+  # --------------------------------------------------------------------------
+  # 5. PUBLICATION DE LA RELEASE GITHUB
   # --------------------------------------------------------------------------
   publish-release:
     name: Publish Release on GitHub
-    needs: [build-linux, build-windows, build-macos]
+    needs:
+      - build-linux
+      - build-windows
+      - build-macos-arm64
+      - build-macos-x64
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -249,7 +399,7 @@ jobs:
         run: |
           mkdir -p dist-release
           find all-artifacts -type f -exec cp {} dist-release/ \;
-          
+
           cd dist-release
           sha256sum * > SHA256SUMS.txt
           cat SHA256SUMS.txt

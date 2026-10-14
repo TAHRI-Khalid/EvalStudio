@@ -448,7 +448,7 @@ public class EvaluationsViewController implements Initializable {
             if (groupId != null) {
                 loadEvaluations(groupId);
             }
-            notificationService.showInfo("Évaluation supprimée", "L'évaluation « " + selected.getDesignation() + " » a été supprimée avec succès.");
+            notificationService.showSuccess("Évaluation supprimée", "L'évaluation « " + selected.getDesignation() + " » a été supprimée avec succès.");
         } catch (Exception e) {
             log.error("Échec de la suppression de l'évaluation", e);
             notificationService.showError("Erreur", "Impossible de supprimer l'évaluation : " + e.getMessage());
@@ -482,7 +482,7 @@ public class EvaluationsViewController implements Initializable {
             if (groupId != null) {
                 loadEvaluations(groupId);
             }
-            notificationService.showInfo(
+            notificationService.showSuccess(
                     "Mode conception restauré",
                     "L'évaluation a été réinitialisée en mode conception. Vous pouvez désormais modifier les questions et barèmes."
             );

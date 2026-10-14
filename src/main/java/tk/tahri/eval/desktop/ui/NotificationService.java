@@ -14,7 +14,10 @@ public class NotificationService {
     public enum ToastType { INFO, SUCCESS, WARNING, ERROR }
 
     public interface ToastPresenter {
-        void showToast(String message, ToastType type);
+        void showToast(String title, String message, ToastType type);
+        default void showToast(String message, ToastType type) {
+            showToast(null, message, type);
+        }
     }
 
     private ToastPresenter toastPresenter;
@@ -24,57 +27,110 @@ public class NotificationService {
     }
 
     public void showToast(String message, ToastType type) {
+        showToast(null, message, type);
+    }
+
+    public void showToast(String title, String message, ToastType type) {
         if (toastPresenter != null) {
-            Platform.runLater(() -> toastPresenter.showToast(message, type));
+            Platform.runLater(() -> toastPresenter.showToast(title, message, type));
         } else {
             switch (type) {
-                case ERROR -> showError("Erreur", message);
-                case WARNING -> showWarning("Attention", message);
-                default -> showInfo("Information", message);
+                case SUCCESS -> showSuccessDialog(title != null ? title : "Succès", message);
+                case ERROR -> showErrorDialog(title != null ? title : "Erreur", null, message);
+                case WARNING -> showWarningDialog(title != null ? title : "Attention", message);
+                default -> showInfoDialog(title != null ? title : "Information", message);
             }
         }
     }
 
     public void showToast(String message) {
-        showToast(message, ToastType.INFO);
+        showToast(null, message, ToastType.INFO);
     }
 
+    // --- SUCCESS ---
+    public void showSuccess(String title, String message) {
+        showToast(title, message, ToastType.SUCCESS);
+    }
+
+    public void showSuccess(String message) {
+        showSuccess("Succès", message);
+    }
+
+    // --- INFO ---
     public void showInfo(String title, String message) {
-        if (toastPresenter != null) {
-            showToast(message, ToastType.INFO);
-            return;
-        }
-        Platform.runLater(() -> {
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle(title);
-            alert.setHeaderText(null);
-            alert.setContentText(message);
-            alert.showAndWait();
-        });
+        showToast(title, message, ToastType.INFO);
     }
 
+    public void showInfo(String message) {
+        showInfo("Information", message);
+    }
+
+    // --- WARNING ---
     public void showWarning(String title, String message) {
-        if (toastPresenter != null) {
-            showToast(message, ToastType.WARNING);
-            return;
-        }
+        showToast(title, message, ToastType.WARNING);
+    }
+
+    public void showWarning(String message) {
+        showWarning("Attention", message);
+    }
+
+    // --- ERROR ---
+    public void showError(String title, String message) {
+        showToast(title, message, ToastType.ERROR);
+    }
+
+    public void showError(String message) {
+        showError("Erreur", message);
+    }
+
+    // --- MODAL DIALOGS (Fallbacks ou alertes explicites) ---
+    public void showInfoDialog(String title, String message) {
         Platform.runLater(() -> {
-            Alert alert = new Alert(Alert.AlertType.WARNING);
-            alert.setTitle(title);
-            alert.setHeaderText(null);
-            alert.setContentText(message);
+            Alert alert = createAlert(Alert.AlertType.INFORMATION, title, null, message);
             alert.showAndWait();
         });
     }
 
-    public void showError(String title, String message) {
+    public void showSuccessDialog(String title, String message) {
         Platform.runLater(() -> {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle(title);
-            alert.setHeaderText("Une erreur est survenue");
-            alert.setContentText(message);
+            Alert alert = createAlert(Alert.AlertType.INFORMATION, title, null, message);
             alert.showAndWait();
         });
+    }
+
+    public void showWarningDialog(String title, String message) {
+        Platform.runLater(() -> {
+            Alert alert = createAlert(Alert.AlertType.WARNING, title, null, message);
+            alert.showAndWait();
+        });
+    }
+
+    public void showErrorDialog(String title, String header, String message) {
+        Platform.runLater(() -> {
+            Alert alert = createAlert(Alert.AlertType.ERROR, title, header != null ? header : "Une erreur est survenue", message);
+            alert.showAndWait();
+        });
+    }
+
+    private Alert createAlert(Alert.AlertType type, String title, String header, String message) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title != null ? title : "Notification");
+        alert.setHeaderText(header);
+        alert.setContentText(message);
+        try {
+            URL cssUrl = getClass().getResource("/css/style.css");
+            if (cssUrl != null) {
+                alert.getDialogPane().getStylesheets().add(cssUrl.toExternalForm());
+            }
+        } catch (Exception ignored) {}
+        javafx.stage.Window owner = javafx.stage.Window.getWindows().stream()
+                .filter(javafx.stage.Window::isShowing)
+                .findFirst()
+                .orElse(null);
+        if (owner != null) {
+            alert.initOwner(owner);
+        }
+        return alert;
     }
 
     public boolean confirm(String title, String header, String message) {

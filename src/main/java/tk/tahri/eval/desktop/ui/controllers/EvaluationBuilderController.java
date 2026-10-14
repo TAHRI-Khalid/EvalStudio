@@ -38,6 +38,8 @@ import tk.tahri.eval.desktop.service.ImageStorageService;
 import tk.tahri.eval.desktop.service.QuestionExcelService;
 import tk.tahri.eval.desktop.ui.NotificationService;
 import tk.tahri.eval.desktop.ui.util.DesktopFileViewer;
+import tk.tahri.eval.desktop.ui.util.ImageUtils;
+import tk.tahri.eval.desktop.ui.util.ImageUploadBox;
 import tk.tahri.eval.desktop.ui.util.TaskProgressDialog;
 import java.io.File;
 import java.io.FileInputStream;
@@ -186,18 +188,21 @@ public class EvaluationBuilderController implements Initializable {
                         Path imgPath = imageStorageService.getImagePath(item.imagePath(), ImageStorageService.ImageFolder.QUESTION_IMAGES, false);
                         if (imgPath != null && Files.exists(imgPath)) {
                             try {
-                                Image img = new Image(imgPath.toUri().toString(), 140, 85, true, true);
-                                ImageView iv = new ImageView(img);
-                                iv.setFitWidth(140);
-                                iv.setFitHeight(85);
-                                iv.setPreserveRatio(true);
-                                Rectangle clip = new Rectangle(140, 85);
-                                clip.setArcWidth(8);
-                                clip.setArcHeight(8);
-                                iv.setClip(clip);
-                                HBox imgBox = new HBox(iv);
-                                imgBox.setPadding(new Insets(2, 0, 4, 16));
-                                contentBox.getChildren().add(imgBox);
+                                Image img = ImageUtils.loadImage(imgPath);
+                                if (img != null && !img.isError() && img.getWidth() > 0) {
+                                    ImageView iv = new ImageView(img);
+                                    iv.setFitWidth(140);
+                                    iv.setFitHeight(85);
+                                    iv.setPreserveRatio(true);
+                                    iv.setSmooth(true);
+                                    Rectangle clip = new Rectangle(140, 85);
+                                    clip.setArcWidth(8);
+                                    clip.setArcHeight(8);
+                                    iv.setClip(clip);
+                                    HBox imgBox = new HBox(iv);
+                                    imgBox.setPadding(new Insets(2, 0, 4, 16));
+                                    contentBox.getChildren().add(imgBox);
+                                }
                             } catch (Exception ex) {
                                 log.warn("Erreur chargement vignette image question: {}", ex.getMessage());
                             }
@@ -584,7 +589,7 @@ public class EvaluationBuilderController implements Initializable {
 
             recalculateTotalPoints();
             triggerInstantAutoSave();
-            notificationService.showToast("Importation réussie : " + imported.size() + " question(s) importée(s) depuis Excel.", NotificationService.ToastType.SUCCESS);
+            notificationService.showSuccess("Importation réussie", imported.size() + " question(s) importée(s) depuis Excel.");
         } catch (IllegalArgumentException ex) {
             log.warn("Validation échouée lors de l'import Excel des questions: {}", ex.getMessage());
             notificationService.showWarning("Fichier Excel invalide", ex.getMessage());
@@ -622,7 +627,7 @@ public class EvaluationBuilderController implements Initializable {
             String successMsg = isTemplate
                     ? "Modèle Excel exporté avec succès vers : " + file.getName()
                     : "Questions exportées avec succès vers : " + file.getName();
-            notificationService.showToast(successMsg, NotificationService.ToastType.SUCCESS);
+            notificationService.showSuccess("Exportation réussie", successMsg);
         } catch (Exception ex) {
             log.error("Erreur lors de l'export Excel des questions", ex);
             notificationService.showError("Erreur d'exportation", "Impossible d'exporter le fichier Excel : " + ex.getMessage());
@@ -650,134 +655,35 @@ public class EvaluationBuilderController implements Initializable {
         content.setPadding(new Insets(15));
         content.setPrefWidth(600);
 
-        TextField txtQuestion = new TextField(existing != null ? existing.content() : "");
+        TextArea txtQuestion = new TextArea(existing != null ? existing.content() : "");
         txtQuestion.setPromptText("Énoncé de la question...");
-        txtQuestion.setStyle("-fx-background-radius: 6px; -fx-padding: 8;");
+        txtQuestion.setPrefRowCount(2);
+        txtQuestion.setWrapText(true);
+        txtQuestion.setStyle("-fx-background-radius: 6px;");
 
-        // Section Image d'illustration
-        Label lblImage = new Label("Image d'illustration (optionnelle) :");
-        lblImage.setStyle("-fx-font-weight: 600; -fx-font-size: 12px;");
+        // Section Image d'illustration unifiée avec ImageUploadBox
+        ImageUploadBox imageUploadBox = new ImageUploadBox(
+                "Illustration de la question",
+                "Format recommandé : PNG, JPG, WebP",
+                ImageUploadBox.DisplayMode.LANDSCAPE
+        );
 
-        AtomicReference<File> chosenImageFile = new AtomicReference<>(null);
-        AtomicBoolean imageRemoved = new AtomicBoolean(false);
-
-        StackPane imagePreview = new StackPane();
-        imagePreview.setPrefSize(130, 85);
-        imagePreview.setMinSize(130, 85);
-        imagePreview.setMaxSize(130, 85);
-        imagePreview.setStyle("-fx-background-color: #f1f4fa; -fx-border-color: #c2c6d5; -fx-border-width: 1px; -fx-border-radius: 8px; -fx-background-radius: 8px; -fx-alignment: CENTER;");
-
-        Button btnRemoveImage = new Button("Retirer l'image");
-        btnRemoveImage.setStyle("-fx-text-fill: #ba1a1a;");
-        FontIcon trashIcon = new FontIcon(Feather.TRASH_2);
-        trashIcon.setIconColor(javafx.scene.paint.Color.web("#ba1a1a"));
-        trashIcon.setIconSize(13);
-        btnRemoveImage.setGraphic(trashIcon);
-
-        Label lblImageName = new Label("Aucune image");
-        lblImageName.setStyle("-fx-font-size: 11px; -fx-text-fill: #424753;");
-
-        Runnable refreshImagePreview = () -> {
-            imagePreview.getChildren().clear();
-            if (imageRemoved.get()) {
-                FontIcon ph = new FontIcon(Feather.IMAGE);
-                ph.setIconColor(javafx.scene.paint.Color.web("#727782"));
-                ph.setIconSize(24);
-                imagePreview.getChildren().add(ph);
-                lblImageName.setText("Aucune image");
-                btnRemoveImage.setDisable(true);
-            } else if (chosenImageFile.get() != null) {
-                try {
-                    Image img = new Image(chosenImageFile.get().toURI().toString(), 126, 81, true, true);
-                    ImageView iv = new ImageView(img);
-                    iv.setFitWidth(126);
-                    iv.setFitHeight(81);
-                    iv.setPreserveRatio(true);
-                    imagePreview.getChildren().add(iv);
-                    lblImageName.setText(chosenImageFile.get().getName());
-                    btnRemoveImage.setDisable(false);
-                } catch (Exception ex) {
-                    FontIcon ph = new FontIcon(Feather.IMAGE);
-                    ph.setIconColor(javafx.scene.paint.Color.web("#727782"));
-                    ph.setIconSize(24);
-                    imagePreview.getChildren().add(ph);
-                    lblImageName.setText("Erreur chargement");
-                    btnRemoveImage.setDisable(true);
-                }
-            } else if (existing != null && existing.imagePath() != null && !existing.imagePath().isBlank()) {
-                Path currentPath = imageStorageService.getImagePath(existing.imagePath(), ImageStorageService.ImageFolder.QUESTION_IMAGES, false);
-                if (currentPath != null && Files.exists(currentPath)) {
-                    try {
-                        Image img = new Image(currentPath.toUri().toString(), 126, 81, true, true);
-                        ImageView iv = new ImageView(img);
-                        iv.setFitWidth(126);
-                        iv.setFitHeight(81);
-                        iv.setPreserveRatio(true);
-                        imagePreview.getChildren().add(iv);
-                        lblImageName.setText(existing.imagePath());
-                        btnRemoveImage.setDisable(false);
-                    } catch (Exception ex) {
-                        FontIcon ph = new FontIcon(Feather.IMAGE);
-                        ph.setIconColor(javafx.scene.paint.Color.web("#727782"));
-                        ph.setIconSize(24);
-                        imagePreview.getChildren().add(ph);
-                        lblImageName.setText("Image existante");
-                        btnRemoveImage.setDisable(true);
-                    }
-                } else {
-                    FontIcon ph = new FontIcon(Feather.IMAGE);
-                    ph.setIconColor(javafx.scene.paint.Color.web("#727782"));
-                    ph.setIconSize(24);
-                    imagePreview.getChildren().add(ph);
-                    lblImageName.setText("Image introuvable");
-                    btnRemoveImage.setDisable(true);
-                }
-            } else {
-                FontIcon ph = new FontIcon(Feather.IMAGE);
-                ph.setIconColor(javafx.scene.paint.Color.web("#727782"));
-                ph.setIconSize(24);
-                imagePreview.getChildren().add(ph);
-                lblImageName.setText("Aucune image");
-                btnRemoveImage.setDisable(true);
+        if (existing != null && existing.imagePath() != null && !existing.imagePath().isBlank()) {
+            Path currentPath = imageStorageService.getImagePath(existing.imagePath(), ImageStorageService.ImageFolder.QUESTION_IMAGES, false);
+            if (currentPath != null && Files.exists(currentPath)) {
+                imageUploadBox.setInitialImage(currentPath, existing.imagePath());
             }
-        };
+        }
 
-        refreshImagePreview.run();
-
-        Button btnChooseImage = new Button("Choisir une image...");
-        btnChooseImage.setGraphic(new FontIcon(Feather.IMAGE));
-        btnChooseImage.setOnAction(e -> {
-            FileChooser fileChooser = new FileChooser();
-            fileChooser.setTitle("Sélectionner une image pour la question");
-            fileChooser.getExtensionFilters().add(
-                    new FileChooser.ExtensionFilter("Images (*.png, *.jpg, *.jpeg, *.webp)", "*.png", "*.jpg", "*.jpeg", "*.webp")
-            );
-            File f = fileChooser.showOpenDialog(dialog.getDialogPane().getScene().getWindow());
-            if (f != null) {
-                chosenImageFile.set(f);
-                imageRemoved.set(false);
-                refreshImagePreview.run();
+        imageUploadBox.setOnChange(() -> {
+            Platform.runLater(() -> {
                 if (dialog.getDialogPane().getScene() != null && dialog.getDialogPane().getScene().getWindow() != null) {
+                    dialog.getDialogPane().applyCss();
+                    dialog.getDialogPane().layout();
                     dialog.getDialogPane().getScene().getWindow().sizeToScene();
                 }
-            }
+            });
         });
-
-        btnRemoveImage.setOnAction(e -> {
-            chosenImageFile.set(null);
-            imageRemoved.set(true);
-            refreshImagePreview.run();
-            if (dialog.getDialogPane().getScene() != null && dialog.getDialogPane().getScene().getWindow() != null) {
-                dialog.getDialogPane().getScene().getWindow().sizeToScene();
-            }
-        });
-
-        VBox imageControls = new VBox(6, btnChooseImage, btnRemoveImage, lblImageName);
-        imageControls.setAlignment(Pos.CENTER_LEFT);
-
-        HBox imageSection = new HBox(14, imagePreview, imageControls);
-        imageSection.setAlignment(Pos.CENTER_LEFT);
-        imageSection.setStyle("-fx-padding: 8 12; -fx-background-color: #f7f9ff; -fx-background-radius: 8px; -fx-border-color: #ebeef4; -fx-border-radius: 8px;");
 
         Label lblAnswers = new Label("Choix de réponses (2 à 7 réponses, cochez la ou les bonnes réponses) :");
         lblAnswers.setStyle("-fx-font-weight: 600; -fx-font-size: 12px;");
@@ -858,7 +764,7 @@ public class EvaluationBuilderController implements Initializable {
 
         content.getChildren().addAll(
                 new Label("Énoncé :"), txtQuestion,
-                lblImage, imageSection,
+                new Label("Image d'illustration (optionnelle) :"), imageUploadBox,
                 lblAnswers, answersContainer, btnAddChoice
         );
         dialog.getDialogPane().setContent(content);
@@ -890,10 +796,10 @@ public class EvaluationBuilderController implements Initializable {
                 }
 
                 String finalImagePath = null;
-                if (imageRemoved.get()) {
+                if (imageUploadBox.isRemoved()) {
                     finalImagePath = null;
-                } else if (chosenImageFile.get() != null) {
-                    finalImagePath = imageStorageService.storeImage(chosenImageFile.get(), ImageStorageService.ImageFolder.QUESTION_IMAGES);
+                } else if (imageUploadBox.getFile() != null) {
+                    finalImagePath = imageStorageService.storeImage(imageUploadBox.getFile(), ImageStorageService.ImageFolder.QUESTION_IMAGES);
                 } else if (existing != null) {
                     finalImagePath = existing.imagePath();
                 }
@@ -1054,7 +960,7 @@ public class EvaluationBuilderController implements Initializable {
                 progressBox.setVisible(false);
                 progressBox.setManaged(false);
             }
-            notificationService.showInfo("Génération terminée",
+            notificationService.showSuccess("Génération terminée",
                     "Le sujet PDF avec code-barres PDF417 a été généré avec succès !\nL'épreuve est passée en production.");
             if (mainLayoutController != null) {
                 mainLayoutController.showCorrectionForEvaluation(groupId, evalId);

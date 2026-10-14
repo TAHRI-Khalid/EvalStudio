@@ -281,7 +281,7 @@ public class PdfViewerController implements Initializable {
         if (target != null) {
             try {
                 Files.copy(currentPdfFile.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                notificationService.showInfo("Export réussi", "Le document a été enregistré sous :\n" + target.getAbsolutePath());
+                notificationService.showSuccess("Export réussi", "Le document a été enregistré sous :\n" + target.getAbsolutePath());
             } catch (IOException e) {
                 log.error("Échec de l'exportation du PDF", e);
                 notificationService.showError("Erreur d'exportation", e.getMessage());

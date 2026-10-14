@@ -17,6 +17,7 @@ import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.util.Duration;
+import tk.tahri.eval.desktop.config.AppVersion;
 
 /**
  * Écran de démarrage (Splash Screen) affiché immédiatement au lancement de l'application
@@ -106,7 +107,7 @@ public class SplashScreen {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Label versionLabel = new Label("v1.0.0");
+        Label versionLabel = new Label(AppVersion.getVersion());
         versionLabel.setStyle(
             "-fx-font-size: 11px;" +
             "-fx-font-weight: 600;" +

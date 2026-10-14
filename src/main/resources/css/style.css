@@ -278,11 +278,26 @@
 .dialog-logo-preview {
     -fx-min-width: 64px;
     -fx-min-height: 64px;
-    -fx-max-width: 64px;
-    -fx-max-height: 64px;
+    -fx-pref-width: 64px;
+    -fx-pref-height: 64px;
     -fx-background-color: -color-bg-subtle;
     -fx-border-color: -color-border-default;
     -fx-border-width: 1px;
+    -fx-border-radius: 14px;
+    -fx-background-radius: 14px;
+    -fx-alignment: CENTER;
+}
+
+.dialog-logo-preview-enlarged {
+    -fx-min-width: 110px;
+    -fx-min-height: 110px;
+    -fx-pref-width: 110px;
+    -fx-pref-height: 110px;
+    -fx-max-width: 120px;
+    -fx-max-height: 120px;
+    -fx-background-color: -color-bg-subtle;
+    -fx-border-color: -color-accent-emphasis;
+    -fx-border-width: 1.5px;
     -fx-border-radius: 14px;
     -fx-background-radius: 14px;
     -fx-alignment: CENTER;
@@ -453,21 +468,44 @@
 .toast-container {
     -fx-background-color: -color-bg-default;
     -fx-border-color: -color-border-default;
-    -fx-border-width: 1px;
-    -fx-border-radius: 10px;
-    -fx-background-radius: 10px;
-    -fx-padding: 10 16;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.16), 16, 0, 0, 4);
-    -fx-spacing: 10;
+    -fx-border-width: 1px 1px 1px 4px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-padding: 10 14;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.14), 16, 0, 0, 4);
+    -fx-spacing: 12;
     -fx-alignment: CENTER_LEFT;
 }
 
 .toast-success {
     -fx-border-color: #1b8744;
+    -fx-background-color: #f6fcf8;
+}
+
+.toast-info {
+    -fx-border-color: #004faa;
+    -fx-background-color: #f7f9ff;
+}
+
+.toast-warning {
+    -fx-border-color: #d97706;
+    -fx-background-color: #fffdf5;
 }
 
 .toast-error {
     -fx-border-color: #ba1a1a;
+    -fx-background-color: #fff8f7;
+}
+
+.toast-title {
+    -fx-font-weight: 700;
+    -fx-font-size: 13px;
+}
+
+.toast-message {
+    -fx-font-size: 12px;
+    -fx-font-weight: 400;
+    -fx-text-fill: -color-fg-default;
 }
 
 /* Breadcrumb */
@@ -534,4 +572,105 @@
     -fx-padding: 7 12;
     -fx-font-size: 13px;
 }
+
+/* Upload d'image unifié (ImageUploadBox) */
+.image-upload-box {
+    -fx-padding: 10 14;
+    -fx-background-color: -color-bg-subtle;
+    -fx-background-radius: 10px;
+    -fx-border-color: -color-border-default;
+    -fx-border-radius: 10px;
+    -fx-border-width: 1px;
+    -fx-alignment: CENTER_LEFT;
+}
+
+.image-upload-box:hover {
+    -fx-border-color: -color-border-muted;
+}
+
+.image-upload-box.drag-active {
+    -fx-background-color: rgba(9, 105, 218, 0.08);
+    -fx-border-color: -color-accent-emphasis;
+    -fx-border-style: dashed;
+    -fx-border-width: 1.5px;
+}
+
+.image-upload-preview {
+    -fx-background-color: -color-bg-default;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 1px;
+    -fx-border-radius: 12px;
+    -fx-background-radius: 12px;
+    -fx-alignment: CENTER;
+}
+
+.image-upload-preview-empty {
+    -fx-background-color: -color-bg-subtle;
+    -fx-border-color: -color-border-default;
+}
+
+.image-upload-preview-active {
+    -fx-background-color: -color-bg-default;
+    -fx-border-color: -color-accent-emphasis;
+    -fx-border-width: 1.5px;
+}
+
+.image-upload-preview.drag-active {
+    -fx-border-color: -color-accent-emphasis;
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
+}
+
+.image-upload-placeholder-icon {
+    -fx-icon-color: -color-fg-muted;
+}
+
+.image-upload-title {
+    -fx-font-weight: 600;
+    -fx-font-size: 13px;
+    -fx-text-fill: -color-fg-default;
+}
+
+.image-upload-details {
+    -fx-font-size: 11px;
+    -fx-text-fill: -color-fg-muted;
+}
+
+.btn-danger-outline {
+    -fx-background-color: transparent;
+    -fx-border-color: #ba1a1a;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-text-fill: #ba1a1a;
+    -fx-cursor: hand;
+}
+
+.btn-danger-outline .text {
+    -fx-fill: #ba1a1a;
+}
+
+.btn-danger-outline .ikonli-font-icon {
+    -fx-icon-color: #ba1a1a;
+    -fx-fill: #ba1a1a;
+}
+
+.btn-danger-outline:hover {
+    -fx-background-color: rgba(186, 26, 26, 0.08);
+}
+
+.btn-danger-outline:disabled {
+    -fx-opacity: 0.4;
+    -fx-border-color: -color-border-muted;
+    -fx-text-fill: -color-fg-muted;
+}
+
+.btn-danger-outline:disabled .text {
+    -fx-fill: -color-fg-muted;
+}
+
+.btn-danger-outline:disabled .ikonli-font-icon {
+    -fx-icon-color: -color-fg-muted;
+    -fx-fill: -color-fg-muted;
+}
+
 

@@ -5,9 +5,11 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.geometry.Side;
+import javafx.geometry.VPos;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -16,6 +18,7 @@ import javafx.scene.layout.*;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.FileChooser;
+import javafx.stage.Window;
 import org.kordamp.ikonli.feather.Feather;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.slf4j.Logger;
@@ -26,11 +29,17 @@ import tk.tahri.eval.desktop.model.Group;
 import tk.tahri.eval.desktop.service.GroupService;
 import tk.tahri.eval.desktop.service.ImageStorageService;
 import tk.tahri.eval.desktop.ui.NotificationService;
+import tk.tahri.eval.desktop.ui.util.ImageUtils;
+import tk.tahri.eval.desktop.ui.util.ImageUploadBox;
 
+import javafx.embed.swing.SwingFXUtils;
+import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import javax.imageio.ImageIO;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -175,13 +184,19 @@ public class GroupsViewController implements Initializable {
         File logoFile = getLogoFile(group.getLogoUrl());
         if (logoFile != null) {
             try {
-                Image img = new Image(logoFile.toURI().toString(), 44, 44, true, true);
-                ImageView iv = new ImageView(img);
-                iv.setFitWidth(44);
-                iv.setFitHeight(44);
-                Circle clip = new Circle(22, 22, 22);
-                iv.setClip(clip);
-                avatar.getChildren().add(iv);
+                Image img = ImageUtils.loadImage(logoFile);
+                if (img != null && !img.isError() && img.getWidth() > 0) {
+                    ImageView iv = new ImageView(img);
+                    iv.setFitWidth(44);
+                    iv.setFitHeight(44);
+                    iv.setPreserveRatio(true);
+                    iv.setSmooth(true);
+                    Circle clip = new Circle(22, 22, 22);
+                    iv.setClip(clip);
+                    avatar.getChildren().add(iv);
+                } else {
+                    renderInitialLetter(avatar, group, themeColor);
+                }
             } catch (Exception ex) {
                 log.warn("Impossible de charger le logo du groupe {}: {}", group.getName(), ex.getMessage());
                 renderInitialLetter(avatar, group, themeColor);
@@ -273,6 +288,7 @@ public class GroupsViewController implements Initializable {
                     "Êtes-vous sûr de vouloir supprimer « " + group.getName() + " » et toutes ses inscriptions ?")) {
                 groupService.deleteGroup(group.getId());
                 loadGroups();
+                notificationService.showSuccess("Groupe supprimé", "Le groupe « " + group.getName() + " » a été supprimé avec succès.");
             }
         });
 
@@ -339,10 +355,27 @@ public class GroupsViewController implements Initializable {
         onNewGroup();
     }
 
+    private Image loadImageFromFile(File file) {
+        return ImageUtils.loadImage(file);
+    }
+
     private void showGroupDialog(Group existing) {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle(existing == null ? "Nouveau groupe" : "Modifier le groupe");
         dialog.setHeaderText(existing == null ? "Créez un groupe pour vos étudiants" : "Mettez à jour les informations du groupe");
+        dialog.setResizable(true);
+
+        Window owner = (groupsFlowPane != null && groupsFlowPane.getScene() != null)
+                ? groupsFlowPane.getScene().getWindow()
+                : (lblGroupCount != null && lblGroupCount.getScene() != null ? lblGroupCount.getScene().getWindow() : null);
+        if (owner != null) {
+            dialog.initOwner(owner);
+        }
+
+        URL cssUrl = getClass().getResource("/css/style.css");
+        if (cssUrl != null) {
+            dialog.getDialogPane().getStylesheets().add(cssUrl.toExternalForm());
+        }
 
         ButtonType btnSaveType = new ButtonType(existing == null ? "Créer le groupe" : "Enregistrer", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(btnSaveType, ButtonType.CANCEL);
@@ -410,115 +443,51 @@ public class GroupsViewController implements Initializable {
             themeSwatches.getChildren().add(swatch);
         }
 
-        // 2. Logo du groupe
-        AtomicReference<File> chosenLogoFile = new AtomicReference<>(null);
-        AtomicBoolean logoRemoved = new AtomicBoolean(false);
+        // 2. Logo du groupe unifié avec ImageUploadBox
+        Label lblLogoRowTitle = new Label("Logo du groupe :");
+        GridPane.setValignment(lblLogoRowTitle, VPos.TOP);
 
-        StackPane logoPreview = new StackPane();
-        logoPreview.getStyleClass().add("dialog-logo-preview");
+        ImageUploadBox imageUploadBox = new ImageUploadBox(
+                "Logo du groupe",
+                "Format recommandé : PNG ou JPG carré",
+                ImageUploadBox.DisplayMode.SQUARE
+        );
 
-        Button btnClearLogo = new Button("Retirer");
-        btnClearLogo.setStyle("-fx-text-fill: #ba1a1a;");
-
-        Runnable refreshLogoPreview = () -> {
-            logoPreview.getChildren().clear();
-            if (logoRemoved.get()) {
-                FontIcon ph = new FontIcon(Feather.IMAGE);
-                ph.setIconColor(javafx.scene.paint.Color.web("#727782"));
-                ph.setIconSize(24);
-                logoPreview.getChildren().add(ph);
-                btnClearLogo.setDisable(true);
-            } else if (chosenLogoFile.get() != null) {
-                try {
-                    Image img = new Image(chosenLogoFile.get().toURI().toString(), 60, 60, true, true);
-                    ImageView iv = new ImageView(img);
-                    iv.setFitWidth(60);
-                    iv.setFitHeight(60);
-                    Rectangle clip = new Rectangle(60, 60);
-                    clip.setArcWidth(20);
-                    clip.setArcHeight(20);
-                    iv.setClip(clip);
-                    logoPreview.getChildren().add(iv);
-                    btnClearLogo.setDisable(false);
-                } catch (Exception ex) {
-                    FontIcon ph = new FontIcon(Feather.IMAGE);
-                    ph.setIconColor(javafx.scene.paint.Color.web("#727782"));
-                    ph.setIconSize(24);
-                    logoPreview.getChildren().add(ph);
-                    btnClearLogo.setDisable(true);
-                }
-            } else if (existing != null && existing.getLogoUrl() != null && !existing.getLogoUrl().isBlank()) {
-                File currentFile = getLogoFile(existing.getLogoUrl());
-                if (currentFile != null) {
-                    try {
-                        Image img = new Image(currentFile.toURI().toString(), 60, 60, true, true);
-                        ImageView iv = new ImageView(img);
-                        iv.setFitWidth(60);
-                        iv.setFitHeight(60);
-                        Rectangle clip = new Rectangle(60, 60);
-                        clip.setArcWidth(20);
-                        clip.setArcHeight(20);
-                        iv.setClip(clip);
-                        logoPreview.getChildren().add(iv);
-                        btnClearLogo.setDisable(false);
-                    } catch (Exception ex) {
-                        FontIcon ph = new FontIcon(Feather.IMAGE);
-                        ph.setIconColor(javafx.scene.paint.Color.web("#727782"));
-                        ph.setIconSize(24);
-                        logoPreview.getChildren().add(ph);
-                        btnClearLogo.setDisable(true);
-                    }
-                } else {
-                    FontIcon ph = new FontIcon(Feather.IMAGE);
-                    ph.setIconColor(javafx.scene.paint.Color.web("#727782"));
-                    ph.setIconSize(24);
-                    logoPreview.getChildren().add(ph);
-                    btnClearLogo.setDisable(true);
-                }
-            } else {
-                FontIcon ph = new FontIcon(Feather.IMAGE);
-                ph.setIconColor(javafx.scene.paint.Color.web("#727782"));
-                ph.setIconSize(24);
-                logoPreview.getChildren().add(ph);
-                btnClearLogo.setDisable(true);
+        if (existing != null && existing.getLogoUrl() != null && !existing.getLogoUrl().isBlank()) {
+            File currentFile = getLogoFile(existing.getLogoUrl());
+            if (currentFile != null) {
+                imageUploadBox.setInitialImage(currentFile, existing.getLogoUrl());
             }
-        };
+        }
 
-        refreshLogoPreview.run();
-
-        Button btnChooseLogo = new Button("Choisir un fichier...");
-        btnChooseLogo.setGraphic(new FontIcon(Feather.UPLOAD));
-        btnChooseLogo.setOnAction(e -> {
-            FileChooser fileChooser = new FileChooser();
-            fileChooser.setTitle("Sélectionner le logo du groupe");
-            fileChooser.getExtensionFilters().add(
-                    new FileChooser.ExtensionFilter("Images (*.png, *.jpg, *.jpeg, *.webp)", "*.png", "*.jpg", "*.jpeg", "*.webp")
-            );
-            File f = fileChooser.showOpenDialog(dialog.getDialogPane().getScene().getWindow());
-            if (f != null) {
-                chosenLogoFile.set(f);
-                logoRemoved.set(false);
-                refreshLogoPreview.run();
-            }
+        imageUploadBox.setOnChange(() -> {
+            Platform.runLater(() -> {
+                if (dialog.getDialogPane().getScene() != null && dialog.getDialogPane().getScene().getWindow() != null) {
+                    dialog.getDialogPane().getScene().getRoot().applyCss();
+                    dialog.getDialogPane().getScene().getRoot().layout();
+                    dialog.getDialogPane().getScene().getWindow().sizeToScene();
+                }
+            });
         });
-
-        btnClearLogo.setOnAction(e -> {
-            chosenLogoFile.set(null);
-            logoRemoved.set(true);
-            refreshLogoPreview.run();
-        });
-
-        HBox logoRow = new HBox(12, logoPreview, btnChooseLogo, btnClearLogo);
-        logoRow.setAlignment(Pos.CENTER_LEFT);
 
         grid.add(new Label("Nom du groupe * :"), 0, 0); grid.add(txtName, 1, 0);
         grid.add(new Label("Filière * :"), 0, 1); grid.add(txtSection, 1, 1);
         grid.add(new Label("Année universitaire :"), 0, 2); grid.add(txtYear, 1, 2);
         grid.add(new Label("Établissement :"), 0, 3); grid.add(txtEtablissement, 1, 3);
         grid.add(new Label("Couleur du thème * :"), 0, 4); grid.add(themeSwatches, 1, 4);
-        grid.add(new Label("Logo du groupe :"), 0, 5); grid.add(logoRow, 1, 5);
+        grid.add(lblLogoRowTitle, 0, 5); grid.add(imageUploadBox, 1, 5);
 
         dialog.getDialogPane().setContent(grid);
+
+        dialog.setOnShown(event -> {
+            Platform.runLater(() -> {
+                if (dialog.getDialogPane().getScene() != null && dialog.getDialogPane().getScene().getWindow() != null) {
+                    dialog.getDialogPane().getScene().getRoot().applyCss();
+                    dialog.getDialogPane().getScene().getRoot().layout();
+                    dialog.getDialogPane().getScene().getWindow().sizeToScene();
+                }
+            });
+        });
 
         Optional<ButtonType> clickResult = dialog.showAndWait();
         if (clickResult.isPresent() && clickResult.get() == btnSaveType) {
@@ -533,16 +502,17 @@ public class GroupsViewController implements Initializable {
             g.setEtablissement(txtEtablissement.getText().trim());
             g.setTheme(selectedTheme.get());
 
-            if (logoRemoved.get()) {
+            if (imageUploadBox.isRemoved()) {
                 g.setLogoUrl(null);
                 groupService.saveGroup(g, null);
-            } else if (chosenLogoFile.get() != null) {
-                groupService.saveGroup(g, chosenLogoFile.get());
+            } else if (imageUploadBox.getFile() != null) {
+                groupService.saveGroup(g, imageUploadBox.getFile());
             } else {
                 groupService.saveGroup(g, null);
             }
 
             loadGroups();
+            notificationService.showSuccess("Groupe enregistré", "Le groupe « " + g.getName() + " » a été " + (existing == null ? "créé" : "mis à jour") + " avec succès.");
         }
     }
 }

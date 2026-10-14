@@ -928,7 +928,7 @@ public class CorrectionViewController implements Initializable {
                 updateActiveEvalStateBadge(reloaded.getState());
             }
 
-            notificationService.showInfo("Correction terminée",
+            notificationService.showSuccess("Correction terminée",
                     "Scan traité avec succès !\n" +
                     "Pages analysées : " + res.totalPages() + "\n" +
                     "Pages corrigées : " + res.correctedPages() + "\n" +
@@ -1094,7 +1094,7 @@ public class CorrectionViewController implements Initializable {
         if (target != null) {
             try {
                 documentService.exportGradesToExcel(currentGroup.getId(), eval.getId(), target);
-                notificationService.showInfo("Export réussi", "Le fichier Excel a été généré avec succès :\n" + target.getName());
+                notificationService.showSuccess("Export réussi", "Le fichier Excel a été généré avec succès :\n" + target.getName());
             } catch (Exception e) {
                 log.error("Échec de l'export Excel", e);
                 notificationService.showError("Erreur d'export", e.getMessage());
@@ -1181,7 +1181,7 @@ public class CorrectionViewController implements Initializable {
         try {
             String evalId = currentEvaluation.getId();
             evaluationService.resetToConception(evalId);
-            notificationService.showInfo(
+            notificationService.showSuccess(
                     "Mode conception restauré",
                     "L'évaluation a été réinitialisée en mode conception. Toutes les données de production ont été supprimées."
             );

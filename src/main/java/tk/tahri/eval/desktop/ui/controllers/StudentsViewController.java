@@ -292,7 +292,7 @@ public class StudentsViewController implements Initializable {
     @FXML
     public void onNewStudent() {
         if (currentGroup == null) {
-            showInlineNotification("Veuillez sélectionner un groupe d'abord.", true);
+            notificationService.showWarning("Sélection requise", "Veuillez sélectionner un groupe d'abord.");
             return;
         }
         showStudentDialog(null);
@@ -305,7 +305,7 @@ public class StudentsViewController implements Initializable {
 
     private void showStudentDialog(Enrollment existing) {
         if (currentGroup == null) {
-            showInlineNotification("Veuillez sélectionner un groupe d'abord.", true);
+            notificationService.showWarning("Sélection requise", "Veuillez sélectionner un groupe d'abord.");
             return;
         }
 
@@ -382,15 +382,15 @@ public class StudentsViewController implements Initializable {
             try {
                 if (existing == null) {
                     groupService.addStudent(currentGroup.getId(), matricule, prenom, nom);
-                    showInlineNotification("Étudiant « " + nom + " " + prenom + " » ajouté avec succès.", false);
+                    notificationService.showSuccess("Étudiant ajouté", "L'étudiant « " + nom + " " + prenom + " » a été ajouté avec succès.");
                 } else {
                     groupService.updateStudent(existing.getId(), matricule, prenom, nom);
-                    showInlineNotification("Coordonnées de l'étudiant « " + nom + " " + prenom + " » mises à jour avec succès.", false);
+                    notificationService.showSuccess("Étudiant mis à jour", "Coordonnées de l'étudiant « " + nom + " " + prenom + " » mises à jour avec succès.");
                 }
                 loadStudents(currentGroup.getId());
             } catch (Exception ex) {
                 log.error("Erreur lors de l'enregistrement de l'étudiant", ex);
-                notificationService.showError("Erreur", "Impossible d'enregistrer l'étudiant : " + ex.getMessage());
+                notificationService.showError("Erreur d'enregistrement", "Impossible d'enregistrer l'étudiant : " + ex.getMessage());
             }
         }
     }
@@ -406,11 +406,11 @@ public class StudentsViewController implements Initializable {
             try {
                 String name = selected.fullName();
                 groupService.removeStudent(selected.getId());
-                showInlineNotification("L'étudiant « " + name + " » a été retiré du groupe.", false);
+                notificationService.showSuccess("Étudiant retiré", "L'étudiant « " + name + " » a été retiré du groupe.");
                 loadStudents(currentGroup.getId());
             } catch (Exception ex) {
                 log.error("Erreur lors de la suppression de l'étudiant", ex);
-                notificationService.showError("Erreur", "Impossible de retirer l'étudiant : " + ex.getMessage());
+                notificationService.showError("Erreur de suppression", "Impossible de retirer l'étudiant : " + ex.getMessage());
             }
         }
     }
@@ -418,7 +418,7 @@ public class StudentsViewController implements Initializable {
     @FXML
     public void onImportExcel() {
         if (currentGroup == null) {
-            showInlineNotification("Veuillez sélectionner un groupe avant d'importer.", true);
+            notificationService.showWarning("Sélection requise", "Veuillez sélectionner un groupe avant d'importer.");
             return;
         }
 
@@ -431,11 +431,11 @@ public class StudentsViewController implements Initializable {
         if (file != null) {
             try {
                 int count = groupService.importStudentsFromExcel(currentGroup.getId(), file);
-                showInlineNotification("Importation réussie : " + count + " étudiant(s) synchronisé(s).", false);
+                notificationService.showSuccess("Importation réussie", count + " étudiant(s) synchronisé(s) avec succès.");
                 loadStudents(currentGroup.getId());
             } catch (Exception ex) {
                 log.error("Échec de l'importation Excel", ex);
-                showInlineNotification("Erreur lors de la lecture du fichier Excel : " + ex.getMessage(), true);
+                notificationService.showError("Erreur d'importation", "Erreur lors de la lecture du fichier Excel : " + ex.getMessage());
             }
         }
     }
@@ -443,7 +443,7 @@ public class StudentsViewController implements Initializable {
     @FXML
     public void onExportExcel() {
         if (currentGroup == null || fullStudentList.isEmpty()) {
-            showInlineNotification("Aucun étudiant à exporter pour ce groupe.", true);
+            notificationService.showWarning("Aucun étudiant", "Aucun étudiant à exporter pour ce groupe.");
             return;
         }
 
@@ -459,30 +459,19 @@ public class StudentsViewController implements Initializable {
         if (target != null) {
             try {
                 groupService.exportStudentsToExcel(currentGroup.getId(), target);
-                showInlineNotification("Liste des étudiants exportée avec succès sous : " + target.getName(), false);
+                notificationService.showSuccess("Exportation réussie", "Liste des étudiants exportée avec succès sous : " + target.getName());
             } catch (Exception ex) {
                 log.error("Échec de l'exportation Excel", ex);
-                showInlineNotification("Erreur lors de l'exportation : " + ex.getMessage(), true);
+                notificationService.showError("Erreur d'exportation", "Erreur lors de l'exportation : " + ex.getMessage());
             }
         }
     }
 
     private void showInlineNotification(String message, boolean isError) {
-        if (lblInlineNotification != null && inlineNotificationBox != null) {
-            lblInlineNotification.setText(message);
-            if (isError) {
-                inlineNotificationBox.setStyle("-fx-background-color: #ffdad6; -fx-background-radius: 8px; -fx-padding: 8 16;");
-                lblInlineNotification.setStyle("-fx-text-fill: #ba1a1a; -fx-font-weight: 600; -fx-font-size: 12px;");
-                inlineNotificationIcon.setIconLiteral("fth-alert-triangle");
-                inlineNotificationIcon.setIconColor(javafx.scene.paint.Color.web("#ba1a1a"));
-            } else {
-                inlineNotificationBox.setStyle("-fx-background-color: #e6f7ec; -fx-background-radius: 8px; -fx-padding: 8 16;");
-                lblInlineNotification.setStyle("-fx-text-fill: #00210e; -fx-font-weight: 600; -fx-font-size: 12px;");
-                inlineNotificationIcon.setIconLiteral("fth-check-circle");
-                inlineNotificationIcon.setIconColor(javafx.scene.paint.Color.web("#1b8744"));
-            }
-            inlineNotificationBox.setVisible(true);
-            inlineNotificationBox.setManaged(true);
+        if (isError) {
+            notificationService.showError("Erreur", message);
+        } else {
+            notificationService.showSuccess("Succès", message);
         }
     }
 

@@ -21,6 +21,7 @@ import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 import org.kordamp.ikonli.feather.Feather;
 import org.kordamp.ikonli.javafx.FontIcon;
@@ -362,7 +363,7 @@ public class MainLayoutController implements Initializable, NotificationService.
         GroupWorkspaceViewController c = getOrCreateWorkspace();
         if (c != null) {
             c.selectGroupAndTab(group, tabIndex);
-            contentArea.getChildren().setAll(workspaceNode);
+            setContentNode(workspaceNode);
         }
     }
 
@@ -417,7 +418,7 @@ public class MainLayoutController implements Initializable, NotificationService.
         GroupWorkspaceViewController c = getOrCreateWorkspace();
         if (c != null) {
             c.selectGroupAndEvaluation(group, evaluationId);
-            contentArea.getChildren().setAll(workspaceNode);
+            setContentNode(workspaceNode);
         }
     }
 
@@ -463,7 +464,7 @@ public class MainLayoutController implements Initializable, NotificationService.
             Node view = loader.load();
             EvaluationBuilderController controller = loader.getController();
             controller.loadEvaluation(evaluationId);
-            contentArea.getChildren().setAll(view);
+            setContentNode(view);
         } catch (IOException e) {
             log.error("Échec de l'ouverture du concepteur d'évaluation", e);
         }
@@ -489,7 +490,7 @@ public class MainLayoutController implements Initializable, NotificationService.
             Node view = loader.load();
             PdfViewerController controller = loader.getController();
             controller.loadFile(pdfFile, title, safeBack);
-            contentArea.getChildren().setAll(view);
+            setContentNode(view);
         } catch (IOException e) {
             log.error("Échec de l'ouverture du visualiseur PDF", e);
         }
@@ -514,12 +515,21 @@ public class MainLayoutController implements Initializable, NotificationService.
         }
     }
 
+    private void setContentNode(Node view) {
+        if (contentArea == null) return;
+        if (toastContainer != null) {
+            contentArea.getChildren().setAll(view, toastContainer);
+        } else {
+            contentArea.getChildren().setAll(view);
+        }
+    }
+
     private void loadView(String fxmlPath) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource(fxmlPath));
             loader.setControllerFactory(applicationContext::getBean);
             Node view = loader.load();
-            contentArea.getChildren().setAll(view);
+            setContentNode(view);
         } catch (IOException e) {
             log.error("Échec du chargement de la vue FXML : {}", fxmlPath, e);
         }
@@ -618,68 +628,120 @@ public class MainLayoutController implements Initializable, NotificationService.
         return null;
     }
 
-    @Override
-    public void showToast(String message, NotificationService.ToastType type) {
-        if (contentArea == null) return;
+    private VBox toastContainer;
 
-        HBox toast = new HBox(10);
+    private VBox getOrCreateToastContainer() {
+        if (toastContainer == null) {
+            toastContainer = new VBox(8);
+            toastContainer.setAlignment(Pos.BOTTOM_RIGHT);
+            toastContainer.setMaxWidth(440);
+            toastContainer.setPickOnBounds(false);
+            StackPane.setAlignment(toastContainer, Pos.BOTTOM_RIGHT);
+            StackPane.setMargin(toastContainer, new Insets(0, 24, 24, 0));
+        }
+        if (contentArea != null && !contentArea.getChildren().contains(toastContainer)) {
+            contentArea.getChildren().add(toastContainer);
+        }
+        return toastContainer;
+    }
+
+    @Override
+    public void showToast(String title, String message, NotificationService.ToastType type) {
+        if (contentArea == null) return;
+        VBox container = getOrCreateToastContainer();
+
+        HBox toast = new HBox(12);
         toast.getStyleClass().add("toast-container");
         toast.setMaxWidth(420);
-        toast.setMaxHeight(HBox.USE_PREF_SIZE);
-        StackPane.setAlignment(toast, Pos.BOTTOM_RIGHT);
-        StackPane.setMargin(toast, new Insets(0, 24, 24, 0));
+        toast.setPickOnBounds(true);
 
         FontIcon icon;
+        String defaultTitle;
+        String titleColor;
+
         switch (type) {
             case SUCCESS -> {
                 toast.getStyleClass().add("toast-success");
                 icon = new FontIcon(Feather.CHECK_CIRCLE);
                 icon.setIconColor(javafx.scene.paint.Color.web("#1b8744"));
+                defaultTitle = "Succès";
+                titleColor = "#1b8744";
             }
             case ERROR -> {
                 toast.getStyleClass().add("toast-error");
-                icon = new FontIcon(Feather.ALERT_TRIANGLE);
+                icon = new FontIcon(Feather.ALERT_OCTAGON);
                 icon.setIconColor(javafx.scene.paint.Color.web("#ba1a1a"));
+                defaultTitle = "Erreur";
+                titleColor = "#ba1a1a";
             }
             case WARNING -> {
-                toast.setStyle("-fx-border-color: #f59e0b;");
-                icon = new FontIcon(Feather.ALERT_CIRCLE);
-                icon.setIconColor(javafx.scene.paint.Color.web("#b45309"));
+                toast.getStyleClass().add("toast-warning");
+                icon = new FontIcon(Feather.ALERT_TRIANGLE);
+                icon.setIconColor(javafx.scene.paint.Color.web("#d97706"));
+                defaultTitle = "Attention";
+                titleColor = "#b45309";
             }
             default -> {
-                toast.setStyle("-fx-border-color: -color-accent-emphasis;");
+                toast.getStyleClass().add("toast-info");
                 icon = new FontIcon(Feather.INFO);
                 icon.setIconColor(javafx.scene.paint.Color.web("#004faa"));
+                defaultTitle = "Information";
+                titleColor = "#004faa";
             }
         }
-        icon.setIconSize(18);
+        icon.setIconSize(20);
 
-        Label lbl = new Label(message);
-        lbl.setWrapText(true);
-        lbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 500; -fx-text-fill: -color-fg-default;");
-        HBox.setHgrow(lbl, Priority.ALWAYS);
+        VBox textContainer = new VBox(2);
+        HBox.setHgrow(textContainer, Priority.ALWAYS);
+
+        String effectiveTitle = (title != null && !title.isBlank()) ? title : defaultTitle;
+        Label lblTitle = new Label(effectiveTitle);
+        lblTitle.getStyleClass().add("toast-title");
+        lblTitle.setStyle("-fx-text-fill: " + titleColor + ";");
+
+        Label lblMessage = new Label(message != null ? message : "");
+        lblMessage.getStyleClass().add("toast-message");
+        lblMessage.setWrapText(true);
+
+        textContainer.getChildren().addAll(lblTitle, lblMessage);
 
         Button btnClose = new Button();
         btnClose.getStyleClass().add("card-action-btn");
-        btnClose.setGraphic(new FontIcon(Feather.X));
-        btnClose.setOnAction(e -> contentArea.getChildren().remove(toast));
+        FontIcon xIcon = new FontIcon(Feather.X);
+        xIcon.setIconSize(13);
+        btnClose.setGraphic(xIcon);
 
-        toast.getChildren().addAll(icon, lbl, btnClose);
+        toast.getChildren().addAll(icon, textContainer, btnClose);
         toast.setOpacity(0.0);
 
-        contentArea.getChildren().add(toast);
+        container.getChildren().add(toast);
 
-        FadeTransition fadeIn = new FadeTransition(Duration.millis(220), toast);
+        FadeTransition fadeIn = new FadeTransition(Duration.millis(200), toast);
         fadeIn.setFromValue(0.0);
         fadeIn.setToValue(1.0);
 
-        PauseTransition pause = new PauseTransition(Duration.millis(3500));
+        PauseTransition pause = new PauseTransition(Duration.millis(4000));
         FadeTransition fadeOut = new FadeTransition(Duration.millis(250), toast);
         fadeOut.setFromValue(1.0);
         fadeOut.setToValue(0.0);
-        fadeOut.setOnFinished(e -> contentArea.getChildren().remove(toast));
+        fadeOut.setOnFinished(e -> container.getChildren().remove(toast));
 
         SequentialTransition seq = new SequentialTransition(fadeIn, pause, fadeOut);
+
+        btnClose.setOnAction(e -> {
+            seq.stop();
+            FadeTransition quickFade = new FadeTransition(Duration.millis(150), toast);
+            quickFade.setFromValue(toast.getOpacity());
+            quickFade.setToValue(0.0);
+            quickFade.setOnFinished(ev -> container.getChildren().remove(toast));
+            quickFade.play();
+        });
+
         seq.play();
+    }
+
+    @Override
+    public void showToast(String message, NotificationService.ToastType type) {
+        showToast(null, message, type);
     }
 }

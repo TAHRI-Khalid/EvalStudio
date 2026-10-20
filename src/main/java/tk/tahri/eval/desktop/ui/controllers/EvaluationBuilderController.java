@@ -1,5 +1,6 @@
 package tk.tahri.eval.desktop.ui.controllers;
 
+import atlantafx.base.theme.Styles;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -339,18 +340,113 @@ public class EvaluationBuilderController implements Initializable {
         });
     }
 
-    private void setupInputListeners() {
-        List<TextField> textFields = List.of(txtDesignation, txtScoreCorrect, txtScoreEmpty, txtScoreIncorrect);
-        for (TextField tf : textFields) {
-            if (tf != null) {
-                tf.textProperty().addListener((o, ov, nv) -> triggerDebouncedAutoSave());
-                tf.focusedProperty().addListener((o, wasFocused, isFocused) -> {
-                    if (!isFocused && !isUpdatingUi) {
-                        flushAutoSave();
-                    }
-                });
-            }
+    private Double tryParseDouble(String text) {
+        if (text == null || text.isBlank()) return null;
+        try {
+            double val = Double.parseDouble(text.trim().replace(',', '.'));
+            if (Double.isNaN(val) || Double.isInfinite(val)) return null;
+            return val;
+        } catch (NumberFormatException e) {
+            return null;
         }
+    }
+
+    private boolean isScoreCorrectValid(String text) {
+        Double val = tryParseDouble(text);
+        return val != null && val > 0;
+    }
+
+    private boolean isScoreIncorrectValid(String text) {
+        Double val = tryParseDouble(text);
+        return val != null && val <= 0;
+    }
+
+    private boolean isScoreEmptyValid(String text) {
+        Double val = tryParseDouble(text);
+        return val != null;
+    }
+
+    private boolean areAllScoreFieldsValid() {
+        return isScoreCorrectValid(txtScoreCorrect != null ? txtScoreCorrect.getText() : null)
+                && isScoreIncorrectValid(txtScoreIncorrect != null ? txtScoreIncorrect.getText() : null)
+                && isScoreEmptyValid(txtScoreEmpty != null ? txtScoreEmpty.getText() : null);
+    }
+
+    private void updateFieldValidationVisuals(TextField field, boolean isValid, String errorMsg) {
+        if (field == null) return;
+        if (isValid) {
+            field.getStyleClass().remove(Styles.DANGER);
+            field.setTooltip(null);
+        } else {
+            if (!field.getStyleClass().contains(Styles.DANGER)) {
+                field.getStyleClass().add(Styles.DANGER);
+            }
+            field.setTooltip(new Tooltip(errorMsg));
+        }
+    }
+
+    private void setupScoreField(TextField field, java.util.function.Predicate<Double> validator, String errorMsg, java.util.function.DoubleSupplier fallbackSupplier) {
+        if (field == null) return;
+
+        field.textProperty().addListener((o, ov, nv) -> {
+            if (isUpdatingUi) return;
+            Double val = tryParseDouble(nv);
+            boolean valid = val != null && validator.test(val);
+            updateFieldValidationVisuals(field, valid, errorMsg);
+            if (valid && areAllScoreFieldsValid()) {
+                triggerDebouncedAutoSave();
+            } else if (!valid && lblSaveStatus != null) {
+                lblSaveStatus.setText("⚠ " + errorMsg);
+                lblSaveStatus.setStyle("-fx-text-fill: #dc2626; -fx-font-size: 11px;");
+            }
+        });
+
+        field.focusedProperty().addListener((o, wasFocused, isFocused) -> {
+            if (!isFocused && !isUpdatingUi) {
+                Double val = tryParseDouble(field.getText());
+                if (val == null || !validator.test(val)) {
+                    notificationService.showWarning("Barème invalide", errorMsg);
+                    double fallback = fallbackSupplier.getAsDouble();
+                    isUpdatingUi = true;
+                    field.setText(String.valueOf(fallback));
+                    isUpdatingUi = false;
+                    updateFieldValidationVisuals(field, true, null);
+                }
+                flushAutoSave();
+            }
+        });
+    }
+
+    private void setupInputListeners() {
+        if (txtDesignation != null) {
+            txtDesignation.textProperty().addListener((o, ov, nv) -> triggerDebouncedAutoSave());
+            txtDesignation.focusedProperty().addListener((o, wasFocused, isFocused) -> {
+                if (!isFocused && !isUpdatingUi) {
+                    flushAutoSave();
+                }
+            });
+        }
+
+        setupScoreField(
+                txtScoreCorrect,
+                v -> v > 0,
+                "La note pour une réponse correcte doit être strictement positive (> 0).",
+                () -> currentEvaluation != null ? currentEvaluation.getDefaultScoreIfCorrect() : 1.0
+        );
+
+        setupScoreField(
+                txtScoreIncorrect,
+                v -> v <= 0,
+                "La note pour une réponse fausse doit être 0 ou négative (≤ 0).",
+                () -> currentEvaluation != null ? currentEvaluation.getDefaultScoreIfIncorrect() : 0.0
+        );
+
+        setupScoreField(
+                txtScoreEmpty,
+                v -> true,
+                "La note pour « sans réponse » doit être un nombre valide (positif, négatif ou zéro).",
+                () -> currentEvaluation != null ? currentEvaluation.getDefaultScoreIfEmpty() : 0.0
+        );
 
         if (comboType != null) comboType.valueProperty().addListener((o, ov, nv) -> triggerInstantAutoSave());
         if (spinDuration != null) spinDuration.valueProperty().addListener((o, ov, nv) -> triggerInstantAutoSave());
@@ -441,6 +537,9 @@ public class EvaluationBuilderController implements Initializable {
             txtScoreEmpty.setDisable(isLocked);
             txtScoreIncorrect.setText(String.valueOf(currentEvaluation.getDefaultScoreIfIncorrect()));
             txtScoreIncorrect.setDisable(isLocked);
+            updateFieldValidationVisuals(txtScoreCorrect, true, null);
+            updateFieldValidationVisuals(txtScoreEmpty, true, null);
+            updateFieldValidationVisuals(txtScoreIncorrect, true, null);
 
             if (btnAddQuestion != null) btnAddQuestion.setDisable(isLocked);
             if (btnImportExcel != null) btnImportExcel.setDisable(isLocked);
@@ -448,6 +547,21 @@ public class EvaluationBuilderController implements Initializable {
             if (progressBox != null) {
                 progressBox.setVisible(false);
                 progressBox.setManaged(false);
+            }
+
+            if (currentEvaluation.isSameScore() && currentEvaluation.getQuestions() != null) {
+                double sc = currentEvaluation.getDefaultScoreIfCorrect();
+                double se = currentEvaluation.getDefaultScoreIfEmpty();
+                double si = currentEvaluation.getDefaultScoreIfIncorrect();
+                for (int i = 0; i < currentEvaluation.getQuestions().size(); i++) {
+                    Question q = currentEvaluation.getQuestions().get(i);
+                    if (q.scoreIfCorrect() != sc || q.scoreIfEmpty() != se || q.scoreIfIncorrect() != si) {
+                        currentEvaluation.getQuestions().set(i, new Question(
+                                q.id(), q.content(), q.imagePath(), q.multipleChoice(),
+                                sc, se, si, q.answers()
+                        ));
+                    }
+                }
             }
 
             questionsList.setAll(currentEvaluation.getQuestions());
@@ -488,14 +602,47 @@ public class EvaluationBuilderController implements Initializable {
         if (chkShuffleAnswers != null) currentEvaluation.setAnswersShuffle(chkShuffleAnswers.isSelected());
         if (chkDoubleSided != null) currentEvaluation.setDoubleSided(chkDoubleSided.isSelected());
 
+        if (!areAllScoreFieldsValid()) {
+            if (lblSaveStatus != null) {
+                lblSaveStatus.setText("⚠ Barème invalide - non enregistré");
+                lblSaveStatus.setStyle("-fx-text-fill: #dc2626; -fx-font-size: 11px;");
+            }
+            return;
+        }
+
         try {
-            String sc = txtScoreCorrect.getText() != null ? txtScoreCorrect.getText().trim().replace(',', '.') : "1.0";
-            String se = txtScoreEmpty.getText() != null ? txtScoreEmpty.getText().trim().replace(',', '.') : "0.0";
-            String si = txtScoreIncorrect.getText() != null ? txtScoreIncorrect.getText().trim().replace(',', '.') : "0.0";
-            if (!sc.isEmpty()) currentEvaluation.setDefaultScoreIfCorrect(Double.parseDouble(sc));
-            if (!se.isEmpty()) currentEvaluation.setDefaultScoreIfEmpty(Double.parseDouble(se));
-            if (!si.isEmpty()) currentEvaluation.setDefaultScoreIfIncorrect(Double.parseDouble(si));
-        } catch (NumberFormatException ignored) {
+            double sc = Double.parseDouble(txtScoreCorrect.getText().trim().replace(',', '.'));
+            double se = Double.parseDouble(txtScoreEmpty.getText().trim().replace(',', '.'));
+            double si = Double.parseDouble(txtScoreIncorrect.getText().trim().replace(',', '.'));
+
+            boolean scoreChanged = (sc != currentEvaluation.getDefaultScoreIfCorrect()
+                    || se != currentEvaluation.getDefaultScoreIfEmpty()
+                    || si != currentEvaluation.getDefaultScoreIfIncorrect());
+
+            currentEvaluation.setDefaultScoreIfCorrect(sc);
+            currentEvaluation.setDefaultScoreIfEmpty(se);
+            currentEvaluation.setDefaultScoreIfIncorrect(si);
+
+            if (scoreChanged && currentEvaluation.isSameScore()) {
+                for (int i = 0; i < questionsList.size(); i++) {
+                    Question q = questionsList.get(i);
+                    questionsList.set(i, new Question(
+                            q.id(),
+                            q.content(),
+                            q.imagePath(),
+                            q.multipleChoice(),
+                            sc,
+                            se,
+                            si,
+                            q.answers()
+                    ));
+                }
+                questionsListView.refresh();
+                recalculateTotalPoints();
+            }
+        } catch (Exception e) {
+            log.warn("Erreur lors de la mise à jour des notes du barème : {}", e.getMessage());
+            return;
         }
 
         currentEvaluation.setQuestions(new ArrayList<>(questionsList));
@@ -509,10 +656,32 @@ public class EvaluationBuilderController implements Initializable {
         }
     }
 
+    private boolean validateScoresAndNotify() {
+        if (!isScoreCorrectValid(txtScoreCorrect != null ? txtScoreCorrect.getText() : null)) {
+            notificationService.showWarning("Barème invalide", "La note pour une réponse correcte doit être strictement positive (> 0).");
+            if (txtScoreCorrect != null) txtScoreCorrect.requestFocus();
+            return false;
+        }
+        if (!isScoreIncorrectValid(txtScoreIncorrect != null ? txtScoreIncorrect.getText() : null)) {
+            notificationService.showWarning("Barème invalide", "La note pour une réponse fausse doit être 0 ou négative (≤ 0).");
+            if (txtScoreIncorrect != null) txtScoreIncorrect.requestFocus();
+            return false;
+        }
+        if (!isScoreEmptyValid(txtScoreEmpty != null ? txtScoreEmpty.getText() : null)) {
+            notificationService.showWarning("Barème invalide", "La note pour « sans réponse » doit être un nombre valide (positif, négatif ou zéro).");
+            if (txtScoreEmpty != null) txtScoreEmpty.requestFocus();
+            return false;
+        }
+        return true;
+    }
+
     @FXML
     public void onSave() {
         if (currentEvaluation != null && currentEvaluation.getState() != EvaluationState.CONCEPTION) {
             notificationService.showWarning("Modification impossible", "Cette évaluation est verrouillée (statut " + currentEvaluation.getState() + ") et ne peut plus être modifiée.");
+            return;
+        }
+        if (!validateScoresAndNotify()) {
             return;
         }
         flushAutoSave();
@@ -532,6 +701,10 @@ public class EvaluationBuilderController implements Initializable {
     public void onImportExcel() {
         if (currentEvaluation != null && currentEvaluation.getState() != EvaluationState.CONCEPTION) {
             notificationService.showWarning("Modification impossible", "Cette évaluation est verrouillée (statut " + currentEvaluation.getState() + ") et ne peut plus être modifiée.");
+            return;
+        }
+
+        if (!validateScoresAndNotify()) {
             return;
         }
 
@@ -805,14 +978,17 @@ public class EvaluationBuilderController implements Initializable {
                 }
 
                 boolean isMulti = answers.stream().filter(Answer::correct).count() > 1;
+                double defaultCorrect = currentEvaluation != null ? currentEvaluation.getDefaultScoreIfCorrect() : 1.0;
+                double defaultEmpty = currentEvaluation != null ? currentEvaluation.getDefaultScoreIfEmpty() : 0.0;
+                double defaultIncorrect = currentEvaluation != null ? currentEvaluation.getDefaultScoreIfIncorrect() : 0.0;
                 return new Question(
                         existing != null ? existing.id() : UUID.randomUUID().toString(),
                         txtQuestion.getText().trim(),
                         finalImagePath,
                         isMulti,
-                        existing != null ? existing.scoreIfCorrect() : 1.0,
-                        existing != null ? existing.scoreIfEmpty() : 0.0,
-                        existing != null ? existing.scoreIfIncorrect() : 0.0,
+                        existing != null ? existing.scoreIfCorrect() : defaultCorrect,
+                        existing != null ? existing.scoreIfEmpty() : defaultEmpty,
+                        existing != null ? existing.scoreIfIncorrect() : defaultIncorrect,
                         answers
                 );
             }

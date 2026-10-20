@@ -35,23 +35,26 @@ public class GradeService {
     }
 
     public List<StudentDetails> findStudentDetails(String groupId, String evaluationId) {
-        evaluationRepository.findById(evaluationId)
+        Evaluation evaluation = evaluationRepository.findById(evaluationId)
                 .filter(e -> groupId.equals(e.groupId()))
                 .orElseThrow(() -> new NotFoundException("Évaluation introuvable : " + evaluationId));
 
         return blueprintPaperAssessmentRepository.findByGroupIdAndEvaluationId(groupId, evaluationId)
-                .stream().map(this::toDetails)
+                .stream().map(a -> this.toDetails(a, evaluation))
                 .toList();
     }
 
-    private StudentDetails toDetails(BlueprintPaperAssessment assessment) {
+    private StudentDetails toDetails(BlueprintPaperAssessment assessment, Evaluation evaluation) {
         return buildDetails(assessment.student, assessment.blueprintPages.stream()
                 .flatMap(p -> p.blueprintQuestions.stream())
-                .toList());
+                .toList(), evaluation);
     }
 
-    private StudentDetails buildDetails(AssessmentStudent student, List<BlueprintQuestion> questions) {
-        double score = questions.stream().filter(q -> q.corrected).mapToDouble(BlueprintQuestion::getScore).sum();
+    private StudentDetails buildDetails(AssessmentStudent student, List<BlueprintQuestion> questions, Evaluation evaluation) {
+        double score = questions.stream()
+                .filter(q -> q.corrected)
+                .mapToDouble(q -> getQuestionScore(q, evaluation))
+                .sum();
         long corrected = questions.stream().filter(q -> q.corrected).count();
         return new StudentDetails(
             student != null ? student.enrollmentId() : null,
@@ -63,6 +66,18 @@ public class GradeService {
             questions.size());
     }
 
+    public double getQuestionScore(BlueprintQuestion q, Evaluation evaluation) {
+        if (evaluation != null && evaluation.sameScore()) {
+            QuestionState state = q.state != null ? q.state : QuestionState.EMPTY;
+            return switch (state) {
+                case CORRECT -> evaluation.defaultScoreIfCorrect();
+                case EMPTY -> evaluation.defaultScoreIfEmpty();
+                case INCORRECT -> evaluation.defaultScoreIfIncorrect();
+            };
+        }
+        return q.getScore();
+    }
+
     public GradesResponse getGrades(String groupId, String evaluationId) {
         Evaluation evaluation = evaluationRepository.findById(evaluationId)
                 .filter(e -> groupId.equals(e.groupId()))
@@ -71,7 +86,7 @@ public class GradeService {
         List<BlueprintPaperAssessment> assessments =
                 blueprintPaperAssessmentRepository.findByGroupIdAndEvaluationId(groupId, evaluationId);
         List<StudentGrade> students = assessments.stream()
-                .map(this::toGrade)
+                .map(a -> this.toGrade(a, evaluation))
                 .toList();
         List<QuestionStatistics> questionStats = computeQuestionStatistics(evaluation, assessments);
         return new GradesResponse(computeStatistics(students), students, questionStats);
@@ -130,14 +145,17 @@ public class GradeService {
         return result;
     }
 
-    private StudentGrade toGrade(BlueprintPaperAssessment assessment) {
+    private StudentGrade toGrade(BlueprintPaperAssessment assessment, Evaluation evaluation) {
         List<BlueprintQuestion> questions = assessment.blueprintPages.stream()
                 .flatMap(p -> p.blueprintQuestions.stream())
                 .toList();
         long correctedQuestions = questions.stream().filter(q -> q.corrected).count();
         int correctedPages = (int) assessment.blueprintPages.stream().filter(p -> p.corrected).count();
         int totalPages = assessment.blueprintPages.size();
-        double score = questions.stream().filter(q -> q.corrected).mapToDouble(BlueprintQuestion::getScore).sum();
+        double score = questions.stream()
+                .filter(q -> q.corrected)
+                .mapToDouble(q -> getQuestionScore(q, evaluation))
+                .sum();
 
         return new StudentGrade(
                 assessment.getId(),
@@ -151,6 +169,10 @@ public class GradeService {
                 correctedPages,
                 totalPages,
                 totalPages > 0 && correctedPages == totalPages);
+    }
+
+    public StudentGrade toGrade(BlueprintPaperAssessment assessment) {
+        return toGrade(assessment, null);
     }
 
     private GradeStatistics computeStatistics(List<StudentGrade> students) {

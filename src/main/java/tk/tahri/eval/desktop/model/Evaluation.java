@@ -58,6 +58,15 @@ public class Evaluation {
                       double defaultScoreIfCorrect, double defaultScoreIfEmpty, double defaultScoreIfIncorrect,
                       boolean questionShuffle, boolean answersShuffle, int columnCount,
                       boolean doubleSided, List<Question> questions, String groupId, String uid, boolean enable) {
+        if (Double.isNaN(defaultScoreIfCorrect) || Double.isInfinite(defaultScoreIfCorrect) || defaultScoreIfCorrect <= 0) {
+            throw new IllegalArgumentException("La note pour une réponse correcte doit être strictement positive (> 0). Valeur reçue : " + defaultScoreIfCorrect);
+        }
+        if (Double.isNaN(defaultScoreIfIncorrect) || Double.isInfinite(defaultScoreIfIncorrect) || defaultScoreIfIncorrect > 0) {
+            throw new IllegalArgumentException("La note pour une réponse fausse doit être 0 ou négative (≤ 0). Valeur reçue : " + defaultScoreIfIncorrect);
+        }
+        if (Double.isNaN(defaultScoreIfEmpty) || Double.isInfinite(defaultScoreIfEmpty)) {
+            throw new IllegalArgumentException("La note pour « sans réponse » doit être un nombre valide.");
+        }
         this.id = id;
         this.state = state != null ? state : EvaluationState.CONCEPTION;
         this.createdAt = createdAt != null ? createdAt : LocalDate.now();
@@ -118,11 +127,26 @@ public class Evaluation {
     public boolean isSameScore() { return sameScore; }
     public void setSameScore(boolean sameScore) { this.sameScore = sameScore; }
     public double getDefaultScoreIfCorrect() { return defaultScoreIfCorrect; }
-    public void setDefaultScoreIfCorrect(double defaultScoreIfCorrect) { this.defaultScoreIfCorrect = defaultScoreIfCorrect; }
+    public void setDefaultScoreIfCorrect(double defaultScoreIfCorrect) {
+        if (Double.isNaN(defaultScoreIfCorrect) || Double.isInfinite(defaultScoreIfCorrect) || defaultScoreIfCorrect <= 0) {
+            throw new IllegalArgumentException("La note pour une réponse correcte doit être strictement positive (> 0). Valeur reçue : " + defaultScoreIfCorrect);
+        }
+        this.defaultScoreIfCorrect = defaultScoreIfCorrect;
+    }
     public double getDefaultScoreIfEmpty() { return defaultScoreIfEmpty; }
-    public void setDefaultScoreIfEmpty(double defaultScoreIfEmpty) { this.defaultScoreIfEmpty = defaultScoreIfEmpty; }
+    public void setDefaultScoreIfEmpty(double defaultScoreIfEmpty) {
+        if (Double.isNaN(defaultScoreIfEmpty) || Double.isInfinite(defaultScoreIfEmpty)) {
+            throw new IllegalArgumentException("La note pour « sans réponse » doit être un nombre valide.");
+        }
+        this.defaultScoreIfEmpty = defaultScoreIfEmpty;
+    }
     public double getDefaultScoreIfIncorrect() { return defaultScoreIfIncorrect; }
-    public void setDefaultScoreIfIncorrect(double defaultScoreIfIncorrect) { this.defaultScoreIfIncorrect = defaultScoreIfIncorrect; }
+    public void setDefaultScoreIfIncorrect(double defaultScoreIfIncorrect) {
+        if (Double.isNaN(defaultScoreIfIncorrect) || Double.isInfinite(defaultScoreIfIncorrect) || defaultScoreIfIncorrect > 0) {
+            throw new IllegalArgumentException("La note pour une réponse fausse doit être 0 ou négative (≤ 0). Valeur reçue : " + defaultScoreIfIncorrect);
+        }
+        this.defaultScoreIfIncorrect = defaultScoreIfIncorrect;
+    }
     public boolean isQuestionShuffle() { return questionShuffle; }
     public void setQuestionShuffle(boolean questionShuffle) { this.questionShuffle = questionShuffle; }
     public boolean isAnswersShuffle() { return answersShuffle; }

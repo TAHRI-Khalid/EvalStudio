@@ -13,13 +13,13 @@ import java.util.Properties;
 public final class AppVersion {
 
     private static final Logger log = LoggerFactory.getLogger(AppVersion.class);
-    private static final String DEFAULT_FALLBACK_VERSION = "0.1.2";
+    private static final String DEFAULT_FALLBACK_VERSION = "0.1.3";
     private static volatile String cachedVersion;
 
     private AppVersion() {}
 
     /**
-     * Retourne la version de l'application préfixée par 'v' (ex: "v0.1.2").
+     * Retourne la version de l'application préfixée par 'v' (ex: "v0.1.3").
      */
     public static String getVersion() {
         if (cachedVersion != null) {

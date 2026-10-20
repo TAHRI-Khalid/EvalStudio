@@ -673,4 +673,11 @@
     -fx-fill: -color-fg-muted;
 }
 
+/* Validation des champs de saisie */
+.text-field.danger, .text-input.danger {
+    -fx-border-color: #dc2626 !important;
+    -fx-border-width: 1.5px !important;
+    -fx-border-radius: 4px;
+}
+
 

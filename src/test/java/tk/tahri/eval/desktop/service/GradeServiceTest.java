@@ -123,4 +123,97 @@ class GradeServiceTest {
         assertEquals(3, s2.totalEvaluated());
         assertEquals(33.33, s2.successRate(), 0.01);
     }
+
+    @Test
+    void testCalculateGradesWithNegativeScoresForIncorrectAnswers() {
+        String evalId = "eval-1";
+        String groupId = "group-1";
+
+        Evaluation evaluation = new Evaluation();
+        evaluation.setId(evalId);
+        evaluation.setGroupId(groupId);
+        evaluation.setSameScore(true);
+        evaluation.setDefaultScoreIfCorrect(1.0);
+        evaluation.setDefaultScoreIfEmpty(0.0);
+        evaluation.setDefaultScoreIfIncorrect(-0.5);
+
+        // Étudiant avec 1 correct (+1.0) et 1 incorrect (-0.5) => Total 0.5
+        BlueprintPaperAssessment assessment = new BlueprintPaperAssessment();
+        assessment.id = "assess-1";
+        assessment.groupId = groupId;
+        assessment.evaluationId = evalId;
+
+        BlueprintPage page = new BlueprintPage(1);
+        BlueprintQuestion bq1 = new BlueprintQuestion();
+        bq1.corrected = true;
+        bq1.state = QuestionState.CORRECT;
+
+        BlueprintQuestion bq2 = new BlueprintQuestion();
+        bq2.corrected = true;
+        bq2.state = QuestionState.INCORRECT;
+
+        page.blueprintQuestions = List.of(bq1, bq2);
+        page.markAsCorrected();
+        assessment.blueprintPages = List.of(page);
+
+        org.mockito.Mockito.when(evaluationRepository.findById(evalId)).thenReturn(java.util.Optional.of(evaluation));
+        org.mockito.Mockito.when(blueprintPaperAssessmentRepository.findByGroupIdAndEvaluationId(groupId, evalId))
+                .thenReturn(List.of(assessment));
+
+        var response = gradeService.getGrades(groupId, evalId);
+        assertNotNull(response);
+        assertEquals(1, response.students().size());
+
+        var studentGrade = response.students().get(0);
+        assertEquals(0.5, studentGrade.score(), 0.001, "La note doit déduire 0.5 point pour la mauvaise réponse (1.0 - 0.5 = 0.5)");
+    }
+
+    @Test
+    void testCalculateGradesCanBeNegativeWhenIncorrectAnswersExceedCorrect() {
+        String evalId = "eval-2";
+        String groupId = "group-1";
+
+        Evaluation evaluation = new Evaluation();
+        evaluation.setId(evalId);
+        evaluation.setGroupId(groupId);
+        evaluation.setSameScore(true);
+        evaluation.setDefaultScoreIfCorrect(1.0);
+        evaluation.setDefaultScoreIfEmpty(0.0);
+        evaluation.setDefaultScoreIfIncorrect(-0.75);
+
+        // Étudiant avec 1 correct (+1.0) et 2 incorrects (-1.5) => Total -0.5
+        BlueprintPaperAssessment assessment = new BlueprintPaperAssessment();
+        assessment.id = "assess-2";
+        assessment.groupId = groupId;
+        assessment.evaluationId = evalId;
+
+        BlueprintPage page = new BlueprintPage(1);
+        BlueprintQuestion bq1 = new BlueprintQuestion();
+        bq1.corrected = true;
+        bq1.state = QuestionState.CORRECT;
+
+        BlueprintQuestion bq2 = new BlueprintQuestion();
+        bq2.corrected = true;
+        bq2.state = QuestionState.INCORRECT;
+
+        BlueprintQuestion bq3 = new BlueprintQuestion();
+        bq3.corrected = true;
+        bq3.state = QuestionState.INCORRECT;
+
+        page.blueprintQuestions = List.of(bq1, bq2, bq3);
+        page.markAsCorrected();
+        assessment.blueprintPages = List.of(page);
+
+        org.mockito.Mockito.when(evaluationRepository.findById(evalId)).thenReturn(java.util.Optional.of(evaluation));
+        org.mockito.Mockito.when(blueprintPaperAssessmentRepository.findByGroupIdAndEvaluationId(groupId, evalId))
+                .thenReturn(List.of(assessment));
+
+        var response = gradeService.getGrades(groupId, evalId);
+        assertNotNull(response);
+        var studentGrade = response.students().get(0);
+        assertEquals(-0.5, studentGrade.score(), 0.001, "La note doit pouvoir être négative (1.0 - 0.75 - 0.75 = -0.5)");
+        assertEquals(-0.5, response.statistics().min());
+        assertEquals(-0.5, response.statistics().max());
+        assertEquals(-0.5, response.statistics().average());
+    }
 }

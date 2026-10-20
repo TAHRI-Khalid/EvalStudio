@@ -118,7 +118,7 @@ public class DocumentProcessingService {
 
         int totalPages = saveEachDocumentPageAsImage(target, evalDir, evaluationId, tracker);
 
-        return loadAndProcessPages(groupId, evalDir, evaluationId, totalPages, tracker);
+        return loadAndProcessPages(groupId, evalDir, evaluation, totalPages, tracker);
     }
 
     private int saveEachDocumentPageAsImage(Path file, Path root, String evaluationId,
@@ -165,10 +165,11 @@ public class DocumentProcessingService {
         }
     }
 
-    private ProcessingResult loadAndProcessPages(String groupId, Path evalDir, String evaluationId,
+    private ProcessingResult loadAndProcessPages(String groupId, Path evalDir, Evaluation evaluation,
                                                  int totalExpected,
                                                  TaskProgressTracker tracker) throws IOException {
         var path = evalDir.resolve("pages");
+        String evaluationId = evaluation.getId();
 
         try (var filesStream = Files.list(path)) {
             var files = filesStream.sorted(Comparator.comparing(p -> p.getFileName().toString())).toList();
@@ -238,7 +239,7 @@ public class DocumentProcessingService {
                     try {
                         var data = detectTheBarCode(page);
                         if (data.isPresent()) {
-                            var isCorrected = correctTheQuestions(groupId, evaluationId, file.getFileName().toString(), evalDir, page, data.get());
+                            var isCorrected = correctTheQuestions(groupId, evaluation, file.getFileName().toString(), evalDir, page, data.get());
                             if (isCorrected) {
                                 FileUtils.deleteQuietly(file.toFile());
                                 correctedCount++;
@@ -257,7 +258,7 @@ public class DocumentProcessingService {
                                 Core.rotate(page, rotatedImage, Core.ROTATE_180);
                                 data = detectTheBarCode(rotatedImage);
                                 if (data.isPresent()) {
-                                    var isCorrected = correctTheQuestions(groupId, evaluationId, file.getFileName().toString(), evalDir, rotatedImage, data.get());
+                                    var isCorrected = correctTheQuestions(groupId, evaluation, file.getFileName().toString(), evalDir, rotatedImage, data.get());
                                     if (isCorrected) {
                                         FileUtils.deleteQuietly(file.toFile());
                                         correctedCount++;
@@ -596,7 +597,8 @@ public class DocumentProcessingService {
         }
     }
 
-    private boolean correctTheQuestions(String groupId, String evaluationId, String fileName, Path evalDir, Mat page, Barcode barcode) {
+    private boolean correctTheQuestions(String groupId, Evaluation evaluation, String fileName, Path evalDir, Mat page, Barcode barcode) {
+        String evaluationId = evaluation != null ? evaluation.getId() : null;
         var opBlueprintAssessment = blueprintPaperAssessmentRepository.findByIdAndGroupId(barcode.blueprintAssessmentId(), groupId);
         if (opBlueprintAssessment.isPresent()) {
             var blueprintAssessment = opBlueprintAssessment.get();
@@ -632,12 +634,17 @@ public class DocumentProcessingService {
                 }
 
                 for (var blueprintQuestion : blueprintPage.blueprintQuestions) {
+                    if (evaluation != null && evaluation.sameScore()) {
+                        blueprintQuestion.scoreIfCorrect = evaluation.defaultScoreIfCorrect();
+                        blueprintQuestion.scoreIfEmpty = evaluation.defaultScoreIfEmpty();
+                        blueprintQuestion.scoreIfIncorrect = evaluation.defaultScoreIfIncorrect();
+                    }
                     blueprintQuestion.markAsCorrectedAndSetQuestionState();
                 }
                 blueprintPage.markAsCorrected();
                 blueprintPaperAssessmentRepository.save(blueprintAssessment);
 
-                markOnThePageTheQuestionsStateAndSave(evalDir, page, blueprintPage);
+                markOnThePageTheQuestionsStateAndSave(evalDir, page, blueprintPage, evaluation);
             } else {
                 this.saveUncorrectedPage(groupId, evaluationId, fileName, UncorrectedPageSource.PAGE_NOT_BELONG);
                 return false;
@@ -660,8 +667,9 @@ public class DocumentProcessingService {
     private Mat safeCrop28(Mat page, int x, int y) {
         if (x >= 0 && y >= 0 && x + 28 <= page.cols() && y + 28 <= page.rows()) {
             //Save Image
-            //Imgcodecs.imwrite("upload/data/" + UUID.randomUUID() + ".png", roi);
-            return page.submat(new Rect(x, y, 28, 28));
+            var roi = page.submat(new Rect(x, y, 28, 28));
+            Imgcodecs.imwrite("upload/data/" + UUID.randomUUID() + ".png", roi);
+            return roi;
         }
         Mat fallback = new Mat(28, 28, CvType.CV_8UC1, new Scalar(255));
         int srcX = Math.max(0, Math.min(x, page.cols()));
@@ -681,7 +689,7 @@ public class DocumentProcessingService {
         return fallback;
     }
 
-    private void markOnThePageTheQuestionsStateAndSave(Path evalDir, Mat result, BlueprintPage blueprintPage) {
+    private void markOnThePageTheQuestionsStateAndSave(Path evalDir, Mat result, BlueprintPage blueprintPage, Evaluation evaluation) {
         var colorMat = new Mat();
         Imgproc.cvtColor(result, colorMat, Imgproc.COLOR_GRAY2RGB);
 
@@ -691,12 +699,20 @@ public class DocumentProcessingService {
             final var start = getY(question.blueprintAnswers.getFirst()) + Setting.checkBox * 2 + 6;
             final var end = getY(question.blueprintAnswers.getLast()) - 6;
             var state = question.state != null ? question.state : tk.tahri.eval.desktop.document.entities.blueprint.QuestionState.EMPTY;
+            double scoreCorrect = (evaluation != null && evaluation.sameScore()) ? evaluation.defaultScoreIfCorrect() : question.scoreIfCorrect;
+            double scoreEmpty = (evaluation != null && evaluation.sameScore()) ? evaluation.defaultScoreIfEmpty() : question.scoreIfEmpty;
+            double scoreIncorrect = (evaluation != null && evaluation.sameScore()) ? evaluation.defaultScoreIfIncorrect() : question.scoreIfIncorrect;
+
+            question.scoreIfCorrect = scoreCorrect;
+            question.scoreIfEmpty = scoreEmpty;
+            question.scoreIfIncorrect = scoreIncorrect;
+
             switch (state) {
                 case CORRECT ->
-                        drawLineAndMark(colorMat, x, start, end, new Scalar(0, 255, 0), question.scoreIfCorrect);
-                case EMPTY -> drawLineAndMark(colorMat, x, start, end, new Scalar(0, 140, 255), question.scoreIfEmpty);
+                        drawLineAndMark(colorMat, x, start, end, new Scalar(0, 255, 0), scoreCorrect);
+                case EMPTY -> drawLineAndMark(colorMat, x, start, end, new Scalar(0, 140, 255), scoreEmpty);
                 case INCORRECT ->
-                        drawLineAndMark(colorMat, x, start, end, new Scalar(0, 0, 255), question.scoreIfIncorrect);
+                        drawLineAndMark(colorMat, x, start, end, new Scalar(0, 0, 255), scoreIncorrect);
             }
         });
 
@@ -711,13 +727,21 @@ public class DocumentProcessingService {
         final int font = Imgproc.FONT_ITALIC;
 
         Imgproc.line(colorMat, new Point(x, start), new Point(x, end), color, 3);
-        var strMark = String.format("%.2f", mark).replace(".00", "");
-        if (!strMark.equals("0")) {
-            if (strMark.endsWith("0")) strMark = strMark.substring(0, strMark.length() - 1);
-        }
+        String strMark = formatMark(mark);
 
         var size = Imgproc.getTextSize(strMark, font, fontSize, thickness, null);
         Imgproc.putText(colorMat, strMark, new Point(x - size.width - 4, (start + end) / 2 + size.height / 2), font, fontSize, color, thickness);
+    }
+
+    private static String formatMark(double mark) {
+        if (Math.abs(mark) < 1e-9) {
+            return "0";
+        }
+        if (mark == (long) mark) {
+            return String.valueOf((long) mark);
+        }
+        String formatted = String.format(java.util.Locale.US, "%.2f", mark);
+        return formatted.replaceAll("0+$", "").replaceAll("\\.$", "");
     }
 
     private void saveUncorrectedPage(String groupId, String evaluationId, String fileName, UncorrectedPageSource message) {

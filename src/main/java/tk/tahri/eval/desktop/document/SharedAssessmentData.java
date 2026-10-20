@@ -125,6 +125,11 @@ public class SharedAssessmentData extends Document {
 
     public BlueprintQuestion drawQuestion(PDPageContentStream canvas, int questionNumber, Question question, Place place) {
         var blueprintQuestion = new BlueprintQuestion(question, questionNumber);
+        if (evaluation != null && evaluation.sameScore()) {
+            blueprintQuestion.scoreIfCorrect = evaluation.defaultScoreIfCorrect();
+            blueprintQuestion.scoreIfEmpty = evaluation.defaultScoreIfEmpty();
+            blueprintQuestion.scoreIfIncorrect = evaluation.defaultScoreIfIncorrect();
+        }
         question(canvas, questionNumber, question, place, blueprintQuestion);
         return blueprintQuestion;
     }

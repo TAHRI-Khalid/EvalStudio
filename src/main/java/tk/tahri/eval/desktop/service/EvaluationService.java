@@ -68,6 +68,18 @@ public class EvaluationService {
         return createEvaluation(groupId, designation, Evaluation.TYPE_CONTROLE_CONTINU);
     }
 
+    public static void validateBareme(double scoreCorrect, double scoreEmpty, double scoreIncorrect) {
+        if (Double.isNaN(scoreCorrect) || Double.isInfinite(scoreCorrect) || scoreCorrect <= 0) {
+            throw new IllegalArgumentException("La note pour une réponse correcte doit être strictement positive (> 0). Valeur reçue : " + scoreCorrect);
+        }
+        if (Double.isNaN(scoreIncorrect) || Double.isInfinite(scoreIncorrect) || scoreIncorrect > 0) {
+            throw new IllegalArgumentException("La note pour une réponse fausse doit être 0 ou négative (≤ 0). Valeur reçue : " + scoreIncorrect);
+        }
+        if (Double.isNaN(scoreEmpty) || Double.isInfinite(scoreEmpty)) {
+            throw new IllegalArgumentException("La note pour « sans réponse » doit être un nombre valide.");
+        }
+    }
+
     public Evaluation saveEvaluation(Evaluation evaluation) {
         if (evaluation != null && evaluation.getId() != null) {
             evaluationRepository.findById(evaluation.getId()).ifPresent(existing -> {
@@ -75,6 +87,30 @@ public class EvaluationService {
                     throw new InvalidEvaluationStateException("Une évaluation dont le statut est « " + existing.getState() + " » ne peut plus être modifiée.");
                 }
             });
+        }
+        if (evaluation != null) {
+            validateBareme(evaluation.getDefaultScoreIfCorrect(), evaluation.getDefaultScoreIfEmpty(), evaluation.getDefaultScoreIfIncorrect());
+            if (evaluation.isSameScore() && evaluation.getQuestions() != null) {
+                List<Question> syncedQuestions = new ArrayList<>();
+                for (Question q : evaluation.getQuestions()) {
+                    syncedQuestions.add(new Question(
+                            q.id(),
+                            q.content(),
+                            q.imagePath(),
+                            q.multipleChoice(),
+                            evaluation.getDefaultScoreIfCorrect(),
+                            evaluation.getDefaultScoreIfEmpty(),
+                            evaluation.getDefaultScoreIfIncorrect(),
+                            q.answers()
+                    ));
+                }
+                evaluation.setQuestions(syncedQuestions);
+            }
+            if (evaluation.getQuestions() != null) {
+                for (Question q : evaluation.getQuestions()) {
+                    validateBareme(q.scoreIfCorrect(), q.scoreIfEmpty(), q.scoreIfIncorrect());
+                }
+            }
         }
         return evaluationRepository.save(evaluation);
     }
@@ -117,19 +153,22 @@ public class EvaluationService {
         if (evaluation.getState() != EvaluationState.CONCEPTION) {
             throw new InvalidEvaluationStateException("Une évaluation dont le statut est « " + evaluation.getState() + " » ne peut plus être modifiée.");
         }
+        double sc = (evaluation.isSameScore() && question != null) ? evaluation.getDefaultScoreIfCorrect() : (question != null ? question.scoreIfCorrect() : 1.0);
+        double se = (evaluation.isSameScore() && question != null) ? evaluation.getDefaultScoreIfEmpty() : (question != null ? question.scoreIfEmpty() : 0.0);
+        double si = (evaluation.isSameScore() && question != null) ? evaluation.getDefaultScoreIfIncorrect() : (question != null ? question.scoreIfIncorrect() : 0.0);
+        validateBareme(sc, se, si);
+
         List<Question> questions = new ArrayList<>(evaluation.getQuestions());
-        if (question.id() == null || question.id().isBlank()) {
-            question = new Question(
-                    UUID.randomUUID().toString(),
-                    question.content(),
-                    question.imagePath(),
-                    question.multipleChoice(),
-                    question.scoreIfCorrect(),
-                    question.scoreIfEmpty(),
-                    question.scoreIfIncorrect(),
-                    question.answers()
-            );
-        }
+        question = new Question(
+                (question == null || question.id() == null || question.id().isBlank()) ? UUID.randomUUID().toString() : question.id(),
+                question != null ? question.content() : "",
+                question != null ? question.imagePath() : null,
+                question != null && question.multipleChoice(),
+                sc,
+                se,
+                si,
+                question != null ? question.answers() : List.of()
+        );
         questions.add(question);
         evaluation.setQuestions(questions);
         return evaluationRepository.save(evaluation);

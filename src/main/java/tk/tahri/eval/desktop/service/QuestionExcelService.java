@@ -44,6 +44,7 @@ public class QuestionExcelService {
                                                  double defaultScoreCorrect,
                                                  double defaultScoreEmpty,
                                                  double defaultScoreIncorrect) throws IOException {
+        EvaluationService.validateBareme(defaultScoreCorrect, defaultScoreEmpty, defaultScoreIncorrect);
         List<Question> questions = new ArrayList<>();
 
         try (Workbook workbook = WorkbookFactory.create(inputStream)) {

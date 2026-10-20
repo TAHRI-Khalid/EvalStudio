@@ -10,7 +10,7 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$PROJECT_DIR"
 
 PACKAGE_TYPE="${1:-app-image}"
-APP_VERSION="${2:-0.1.2}"
+APP_VERSION="${2:-0.1.3}"
 
 # Nettoyage de la version pour jpackage (ex: "v1.0.0" -> "1.0.0", "1.0.0-SNAPSHOT" -> "1.0.0")
 APP_VERSION="${APP_VERSION#v}"

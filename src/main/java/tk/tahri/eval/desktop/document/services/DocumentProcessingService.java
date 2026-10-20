@@ -666,10 +666,7 @@ public class DocumentProcessingService {
 
     private Mat safeCrop28(Mat page, int x, int y) {
         if (x >= 0 && y >= 0 && x + 28 <= page.cols() && y + 28 <= page.rows()) {
-            //Save Image
-            var roi = page.submat(new Rect(x, y, 28, 28));
-            Imgcodecs.imwrite("upload/data/" + UUID.randomUUID() + ".png", roi);
-            return roi;
+            return page.submat(new Rect(x, y, 28, 28));
         }
         Mat fallback = new Mat(28, 28, CvType.CV_8UC1, new Scalar(255));
         int srcX = Math.max(0, Math.min(x, page.cols()));
@@ -708,11 +705,9 @@ public class DocumentProcessingService {
             question.scoreIfIncorrect = scoreIncorrect;
 
             switch (state) {
-                case CORRECT ->
-                        drawLineAndMark(colorMat, x, start, end, new Scalar(0, 255, 0), scoreCorrect);
+                case CORRECT -> drawLineAndMark(colorMat, x, start, end, new Scalar(0, 255, 0), scoreCorrect);
                 case EMPTY -> drawLineAndMark(colorMat, x, start, end, new Scalar(0, 140, 255), scoreEmpty);
-                case INCORRECT ->
-                        drawLineAndMark(colorMat, x, start, end, new Scalar(0, 0, 255), scoreIncorrect);
+                case INCORRECT -> drawLineAndMark(colorMat, x, start, end, new Scalar(0, 0, 255), scoreIncorrect);
             }
         });
 

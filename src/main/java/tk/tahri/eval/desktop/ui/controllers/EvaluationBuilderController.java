@@ -35,12 +35,14 @@ import tk.tahri.eval.desktop.model.Evaluation;
 import tk.tahri.eval.desktop.model.EvaluationState;
 import tk.tahri.eval.desktop.model.Question;
 import tk.tahri.eval.desktop.service.EvaluationService;
+import tk.tahri.eval.desktop.service.GroupService;
 import tk.tahri.eval.desktop.service.ImageStorageService;
 import tk.tahri.eval.desktop.service.QuestionExcelService;
 import tk.tahri.eval.desktop.ui.NotificationService;
 import tk.tahri.eval.desktop.ui.util.DesktopFileViewer;
 import tk.tahri.eval.desktop.ui.util.ImageUtils;
 import tk.tahri.eval.desktop.ui.util.ImageUploadBox;
+import tk.tahri.eval.desktop.ui.util.ImportQuestionsDialog;
 import tk.tahri.eval.desktop.ui.util.TaskProgressDialog;
 import java.io.File;
 import java.io.FileInputStream;
@@ -82,6 +84,7 @@ public class EvaluationBuilderController implements Initializable {
 
     @FXML private ListView<Question> questionsListView;
     @FXML private Button btnAddQuestion;
+    @FXML private Button btnImportFromEvaluation;
     @FXML private Button btnImportExcel;
     @FXML private Button btnExportExcel;
     @FXML private Button btnPreviewDraft;
@@ -93,6 +96,7 @@ public class EvaluationBuilderController implements Initializable {
     @FXML private Label lblProgress;
 
     private final EvaluationService evaluationService;
+    private final GroupService groupService;
     private final DocumentService documentService;
     private final NotificationService notificationService;
     private final MainLayoutController mainLayoutController;
@@ -105,12 +109,14 @@ public class EvaluationBuilderController implements Initializable {
     private boolean isUpdatingUi = false;
 
     public EvaluationBuilderController(EvaluationService evaluationService,
+                                       GroupService groupService,
                                        DocumentService documentService,
                                        NotificationService notificationService,
                                        @Lazy MainLayoutController mainLayoutController,
                                        ImageStorageService imageStorageService,
                                        QuestionExcelService questionExcelService) {
         this.evaluationService = evaluationService;
+        this.groupService = groupService;
         this.documentService = documentService;
         this.notificationService = notificationService;
         this.mainLayoutController = mainLayoutController;
@@ -129,6 +135,10 @@ public class EvaluationBuilderController implements Initializable {
 
     private void setupIcons() {
         if (btnAddQuestion != null) btnAddQuestion.setGraphic(new FontIcon(Feather.PLUS));
+        if (btnImportFromEvaluation != null) {
+            btnImportFromEvaluation.setGraphic(new FontIcon(Feather.COPY));
+            btnImportFromEvaluation.setTooltip(new Tooltip("Importer des questions depuis une autre évaluation"));
+        }
         if (btnImportExcel != null) {
             btnImportExcel.setGraphic(new FontIcon(Feather.UPLOAD));
             btnImportExcel.setTooltip(new Tooltip("Importer des questions depuis un fichier Excel (.xlsx)"));
@@ -542,6 +552,7 @@ public class EvaluationBuilderController implements Initializable {
             updateFieldValidationVisuals(txtScoreIncorrect, true, null);
 
             if (btnAddQuestion != null) btnAddQuestion.setDisable(isLocked);
+            if (btnImportFromEvaluation != null) btnImportFromEvaluation.setDisable(isLocked);
             if (btnImportExcel != null) btnImportExcel.setDisable(isLocked);
             if (btnGeneratePdf != null) btnGeneratePdf.setDisable(isLocked);
             if (progressBox != null) {
@@ -695,6 +706,70 @@ public class EvaluationBuilderController implements Initializable {
             return;
         }
         showQuestionDialog(null);
+    }
+
+    @FXML
+    public void onImportFromEvaluation() {
+        if (currentEvaluation != null && currentEvaluation.getState() != EvaluationState.CONCEPTION) {
+            notificationService.showWarning("Modification impossible", "Cette évaluation est verrouillée (statut " + currentEvaluation.getState() + ") et ne peut plus être modifiée.");
+            return;
+        }
+
+        if (!validateScoresAndNotify()) {
+            return;
+        }
+
+        Window window = questionsListView != null && questionsListView.getScene() != null
+                ? questionsListView.getScene().getWindow()
+                : null;
+        String currentEvalId = currentEvaluation != null ? currentEvaluation.getId() : null;
+        String currentGrpId = currentEvaluation != null ? currentEvaluation.getGroupId() : null;
+        boolean hasExisting = !questionsList.isEmpty();
+        boolean sameScore = currentEvaluation != null && currentEvaluation.isSameScore();
+        double scoreCorrect = parseDoubleOrDefault(txtScoreCorrect, 1.0);
+        double scoreEmpty = parseDoubleOrDefault(txtScoreEmpty, 0.0);
+        double scoreIncorrect = parseDoubleOrDefault(txtScoreIncorrect, 0.0);
+
+        ImportQuestionsDialog dialog = new ImportQuestionsDialog(
+                window,
+                groupService,
+                evaluationService,
+                currentEvalId,
+                currentGrpId,
+                hasExisting,
+                sameScore,
+                scoreCorrect
+        );
+
+        Optional<ImportQuestionsDialog.ImportResult> result = dialog.showAndWait();
+        if (result.isEmpty()) {
+            return;
+        }
+
+        ImportQuestionsDialog.ImportResult importData = result.get();
+        List<Question> selected = importData.selectedQuestions();
+        if (selected == null || selected.isEmpty()) {
+            return;
+        }
+
+        Double overrideCorrect = importData.applyDefaultScore() ? scoreCorrect : null;
+        Double overrideEmpty = importData.applyDefaultScore() ? scoreEmpty : null;
+        Double overrideIncorrect = importData.applyDefaultScore() ? scoreIncorrect : null;
+
+        List<Question> clonedQuestions = evaluationService.cloneQuestions(selected, overrideCorrect, overrideEmpty, overrideIncorrect);
+
+        if (importData.replaceExisting()) {
+            questionsList.setAll(clonedQuestions);
+        } else {
+            questionsList.addAll(clonedQuestions);
+        }
+
+        recalculateTotalPoints();
+        triggerInstantAutoSave();
+        notificationService.showSuccess(
+                "Importation réussie",
+                clonedQuestions.size() + " question(s) importée(s) avec succès depuis une autre évaluation."
+        );
     }
 
     @FXML

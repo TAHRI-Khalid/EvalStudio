@@ -94,7 +94,7 @@ mvnw.cmd clean compile javafx:run
 ```bash
 ./mvnw clean package -DskipTests
 ```
-Le fichier JAR exécutable est généré dans `target/eval_desktop-0.1.4.jar`.
+Le fichier JAR exécutable est généré dans `target/eval_desktop-0.1.5.jar`.
 
 ---
 

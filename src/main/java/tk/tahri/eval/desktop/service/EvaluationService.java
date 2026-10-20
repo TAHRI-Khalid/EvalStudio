@@ -244,4 +244,49 @@ public class EvaluationService {
         evaluation.setState(EvaluationState.CONCEPTION);
         return evaluationRepository.save(evaluation);
     }
+
+    /**
+     * Clone une question en générant de nouveaux identifiants uniques (UUID) pour la question
+     * et l'ensemble de ses réponses, tout en permettant éventuellement de surcharger le barème.
+     */
+    public Question cloneQuestion(Question source, Double overrideScoreCorrect, Double overrideScoreEmpty, Double overrideScoreIncorrect) {
+        if (source == null) return null;
+        List<Answer> clonedAnswers = new ArrayList<>();
+        if (source.answers() != null) {
+            for (Answer a : source.answers()) {
+                clonedAnswers.add(new Answer(
+                        UUID.randomUUID().toString(),
+                        a.content(),
+                        a.correct()
+                ));
+            }
+        }
+
+        double scoreCorrect = overrideScoreCorrect != null ? overrideScoreCorrect : source.scoreIfCorrect();
+        double scoreEmpty = overrideScoreEmpty != null ? overrideScoreEmpty : source.scoreIfEmpty();
+        double scoreIncorrect = overrideScoreIncorrect != null ? overrideScoreIncorrect : source.scoreIfIncorrect();
+
+        return new Question(
+                UUID.randomUUID().toString(),
+                source.content(),
+                source.imagePath(),
+                source.multipleChoice(),
+                scoreCorrect,
+                scoreEmpty,
+                scoreIncorrect,
+                clonedAnswers
+        );
+    }
+
+    /**
+     * Clone une liste de questions en régénérant les identifiants uniques.
+     */
+    public List<Question> cloneQuestions(List<Question> sources, Double overrideScoreCorrect, Double overrideScoreEmpty, Double overrideScoreIncorrect) {
+        if (sources == null || sources.isEmpty()) return new ArrayList<>();
+        List<Question> clonedList = new ArrayList<>(sources.size());
+        for (Question q : sources) {
+            clonedList.add(cloneQuestion(q, overrideScoreCorrect, overrideScoreEmpty, overrideScoreIncorrect));
+        }
+        return clonedList;
+    }
 }

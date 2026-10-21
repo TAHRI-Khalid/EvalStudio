@@ -14,7 +14,9 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.TransferMode;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import org.kordamp.ikonli.feather.Feather;
@@ -23,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
+import tk.tahri.eval.desktop.config.AppPreferences;
 import tk.tahri.eval.desktop.document.dto.QuestionStatistics;
 import tk.tahri.eval.desktop.document.dto.StudentGrade;
 import tk.tahri.eval.desktop.document.services.DocumentProcessingService;
@@ -51,7 +54,12 @@ public class CorrectionViewController implements Initializable {
     // 1. Vue Sélection de l'évaluation
     @FXML private VBox evalSelectionView;
     @FXML private Label lblEvalCount;
-    @FXML private Button btnOpenPdfFromList;
+    @FXML private ToggleButton btnViewList;
+    @FXML private ToggleButton btnViewGrid;
+    @FXML private ScrollPane evalCardsScroll;
+    @FXML private FlowPane evalCardsFlowPane;
+    @FXML private VBox cardsEmptyStateBox;
+
     @FXML private TableView<Evaluation> evaluationsTable;
     @FXML private TableColumn<Evaluation, String> colEvalDesignation;
     @FXML private TableColumn<Evaluation, String> colEvalType;
@@ -119,6 +127,7 @@ public class CorrectionViewController implements Initializable {
     private final DocumentService documentService;
     private final GradeService gradeService;
     private final NotificationService notificationService;
+    private final AppPreferences appPreferences;
     private final MainLayoutController mainLayoutController;
     private FilteredList<StudentGrade> filteredGradesList;
     private SortedList<StudentGrade> sortedGradesList;
@@ -139,6 +148,7 @@ public class CorrectionViewController implements Initializable {
                                     DocumentService documentService,
                                     GradeService gradeService,
                                     NotificationService notificationService,
+                                    AppPreferences appPreferences,
                                     @Lazy MainLayoutController mainLayoutController) {
         this.groupService = groupService;
         this.evaluationService = evaluationService;
@@ -146,12 +156,14 @@ public class CorrectionViewController implements Initializable {
         this.documentService = documentService;
         this.gradeService = gradeService;
         this.notificationService = notificationService;
+        this.appPreferences = appPreferences;
         this.mainLayoutController = mainLayoutController;
     }
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         setupEvaluationsTable();
+        setupViewToggle();
         setupTableColumns();
         setupQuestionsTable();
         setupIcons();
@@ -304,6 +316,161 @@ public class CorrectionViewController implements Initializable {
         });
 
         evaluationsTable.setItems(printedEvaluationsList);
+    }
+
+    private void setupViewToggle() {
+        if (btnViewList == null || btnViewGrid == null) return;
+
+        ToggleGroup viewGroup = new ToggleGroup();
+        btnViewList.setToggleGroup(viewGroup);
+        btnViewGrid.setToggleGroup(viewGroup);
+
+        AppPreferences.ViewMode mode = appPreferences != null ? appPreferences.getCorrectionViewMode() : AppPreferences.ViewMode.LIST;
+        if (mode == AppPreferences.ViewMode.GRID) {
+            btnViewGrid.setSelected(true);
+            applyViewMode(AppPreferences.ViewMode.GRID);
+        } else {
+            btnViewList.setSelected(true);
+            applyViewMode(AppPreferences.ViewMode.LIST);
+        }
+
+        viewGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal == null) {
+                if (oldVal != null) {
+                    oldVal.setSelected(true);
+                }
+                return;
+            }
+            AppPreferences.ViewMode selectedMode = newVal == btnViewGrid ? AppPreferences.ViewMode.GRID : AppPreferences.ViewMode.LIST;
+            applyViewMode(selectedMode);
+            if (appPreferences != null) {
+                appPreferences.setCorrectionViewMode(selectedMode);
+            }
+        });
+    }
+
+    private void applyViewMode(AppPreferences.ViewMode mode) {
+        boolean isGrid = (mode == AppPreferences.ViewMode.GRID);
+        if (evaluationsTable != null) {
+            evaluationsTable.setVisible(!isGrid);
+            evaluationsTable.setManaged(!isGrid);
+        }
+        if (evalCardsScroll != null) {
+            evalCardsScroll.setVisible(isGrid);
+            evalCardsScroll.setManaged(isGrid);
+        }
+        if (isGrid) {
+            renderCards();
+        }
+    }
+
+    private void renderCards() {
+        if (evalCardsFlowPane == null) return;
+        evalCardsFlowPane.getChildren().clear();
+
+        if (printedEvaluationsList.isEmpty()) {
+            if (cardsEmptyStateBox != null) {
+                cardsEmptyStateBox.setVisible(true);
+                cardsEmptyStateBox.setManaged(true);
+            }
+            return;
+        }
+
+        if (cardsEmptyStateBox != null) {
+            cardsEmptyStateBox.setVisible(false);
+            cardsEmptyStateBox.setManaged(false);
+        }
+
+        for (Evaluation eval : printedEvaluationsList) {
+            evalCardsFlowPane.getChildren().add(createCorrectionCard(eval));
+        }
+    }
+
+    private VBox createCorrectionCard(Evaluation eval) {
+        VBox card = new VBox(10);
+        card.getStyleClass().add("eval-card");
+
+        // Ligne supérieure : Titre et Badge de Statut
+        HBox topRow = new HBox(8);
+        topRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label lblTitle = new Label(eval.getDesignation() != null ? eval.getDesignation() : "Sans nom");
+        lblTitle.getStyleClass().add("eval-card-title");
+        lblTitle.setMaxWidth(180);
+        lblTitle.setWrapText(true);
+        HBox.setHgrow(lblTitle, Priority.ALWAYS);
+
+        Label lblState = new Label();
+        lblState.getStyleClass().addAll("tag-badge", "eval-card-badge");
+        if (eval.getState() == EvaluationState.PRINTED) {
+            lblState.setText("Prêt pour scan");
+            lblState.setStyle("-fx-background-color: #fef3c7; -fx-text-fill: #92400e;");
+        } else if (eval.getState() == EvaluationState.ARCHIVED) {
+            lblState.setText("Archivée");
+            lblState.setStyle("-fx-background-color: #f1f5f9; -fx-text-fill: #475569;");
+        } else {
+            lblState.setText("En cours");
+            lblState.setStyle("-fx-background-color: #e0f2fe; -fx-text-fill: #0369a1;");
+        }
+
+        topRow.getChildren().addAll(lblTitle, lblState);
+
+        // Badge Type d'évaluation
+        HBox typeRow = new HBox(6);
+        typeRow.setAlignment(Pos.CENTER_LEFT);
+        Label lblType = new Label(eval.getType() != null ? eval.getType() : Evaluation.TYPE_CONTROLE_CONTINU);
+        lblType.setStyle("-fx-background-color: -color-bg-subtle; -fx-text-fill: -color-fg-muted; -fx-padding: 2 6; -fx-background-radius: 4px; -fx-font-size: 11px;");
+        typeRow.getChildren().add(lblType);
+
+        // Informations & Métadonnées
+        VBox detailsBox = new VBox(4);
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        String dateStr = eval.getCreatedAt() != null ? eval.getCreatedAt().format(dtf) : "-";
+        int qCount = eval.getQuestions() != null ? eval.getQuestions().size() : 0;
+        long durationMin = eval.getDuration() != null ? eval.getDuration().toMinutes() : 60;
+
+        Label lblDate = new Label("📅 Date : " + dateStr);
+        lblDate.getStyleClass().add("eval-card-meta");
+
+        Label lblQuestions = new Label("❓ " + qCount + " question" + (qCount > 1 ? "s" : "") + " • Durée : " + durationMin + " min");
+        lblQuestions.getStyleClass().add("eval-card-meta");
+
+        Label lblOptions = new Label("📄 " + (eval.isDoubleSided() ? "Recto-Verso" : "Recto seul") + " • " + eval.getColumnCount() + " colonne" + (eval.getColumnCount() > 1 ? "s" : ""));
+        lblOptions.getStyleClass().add("eval-card-meta");
+
+        detailsBox.getChildren().addAll(lblDate, lblQuestions, lblOptions);
+
+        // Actions
+        HBox actionsRow = new HBox(8);
+        actionsRow.setAlignment(Pos.CENTER_RIGHT);
+        HBox.setHgrow(actionsRow, Priority.ALWAYS);
+
+        Button btnPdf = new Button();
+        btnPdf.getStyleClass().add("card-action-btn");
+        btnPdf.setGraphic(new FontIcon(Feather.FILE_TEXT));
+        btnPdf.setTooltip(new Tooltip("Voir le PDF généré"));
+        btnPdf.setOnAction(e -> {
+            e.consume();
+            openPdfForEvaluation(eval);
+        });
+
+        Button btnDashboard = new Button("Corriger");
+        btnDashboard.getStyleClass().add("btn-primary");
+        btnDashboard.setStyle("-fx-font-size: 11px; -fx-padding: 4 10;");
+        btnDashboard.setGraphic(new FontIcon(Feather.ARROW_RIGHT));
+        btnDashboard.setOnAction(e -> {
+            e.consume();
+            openEvaluationDashboard(eval);
+        });
+
+        actionsRow.getChildren().addAll(btnPdf, btnDashboard);
+
+        card.getChildren().addAll(topRow, typeRow, detailsBox, actionsRow);
+
+        // Clic sur l'ensemble de la carte
+        card.setOnMouseClicked(event -> openEvaluationDashboard(eval));
+
+        return card;
     }
 
     private void setupTableColumns() {
@@ -534,7 +701,6 @@ public class CorrectionViewController implements Initializable {
 
     private void setupIcons() {
         if (btnBackToEvalsList != null) btnBackToEvalsList.setGraphic(new FontIcon(Feather.ARROW_LEFT));
-        if (btnOpenPdfFromList != null) btnOpenPdfFromList.setGraphic(new FontIcon(Feather.FILE_TEXT));
         if (btnResetToConception != null) {
             FontIcon resetIcon = new FontIcon(Feather.ROTATE_CCW);
             resetIcon.setIconColor(javafx.scene.paint.Color.web("#ba1a1a"));
@@ -599,12 +765,6 @@ public class CorrectionViewController implements Initializable {
     }
 
     private void setupListeners() {
-        evaluationsTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
-            if (btnOpenPdfFromList != null) {
-                btnOpenPdfFromList.setDisable(n == null);
-            }
-        });
-
         gradesTable.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> {
             if (n != null && currentGroup != null && mainLayoutController != null) {
                 mainLayoutController.setStatus("Étudiant sélectionné : " + n.fullName() + " • Note : " + (n.score() != null ? String.format("%.2f", n.score()) : "-"));
@@ -697,6 +857,9 @@ public class CorrectionViewController implements Initializable {
         if (currentGroup != null) {
             loadEvaluationsForGroup(currentGroup.getId());
         }
+        if (evalCardsScroll != null && evalCardsScroll.isVisible()) {
+            renderCards();
+        }
     }
 
     public void showDashboardView() {
@@ -737,20 +900,21 @@ public class CorrectionViewController implements Initializable {
         return currentEvaluation;
     }
 
+    private void updateCountLabel(int count) {
+        if (lblEvalCount != null) {
+            lblEvalCount.setText(count + " épreuve" + (count > 1 ? "s prêtes" : " prête"));
+        }
+    }
+
     public void setGroup(Group group) {
         this.currentGroup = group;
-        if (btnOpenPdfFromList != null) {
-            btnOpenPdfFromList.setDisable(true);
-        }
         if (group != null) {
             loadEvaluationsForGroup(group.getId());
         } else {
             printedEvaluationsList.clear();
             this.currentEvaluation = null;
             clearDashboard();
-            if (lblEvalCount != null) {
-                lblEvalCount.setText("0 épreuve(s) prête(s)");
-            }
+            updateCountLabel(0);
         }
         showSelectionView();
     }
@@ -774,15 +938,15 @@ public class CorrectionViewController implements Initializable {
     public void selectCourse(String courseId) { selectGroup(courseId); }
 
     public void loadEvaluationsForGroup(String groupId) {
-        if (btnOpenPdfFromList != null) {
-            btnOpenPdfFromList.setDisable(true);
-        }
         if (groupId == null) {
             printedEvaluationsList.clear();
             this.currentEvaluation = null;
             clearDashboard();
-            if (lblEvalCount != null) {
-                lblEvalCount.setText("0 épreuve(s) prête(s)");
+            updateCountLabel(0);
+            if (evalCardsFlowPane != null) evalCardsFlowPane.getChildren().clear();
+            if (cardsEmptyStateBox != null) {
+                cardsEmptyStateBox.setVisible(true);
+                cardsEmptyStateBox.setManaged(true);
             }
             return;
         }
@@ -792,8 +956,9 @@ public class CorrectionViewController implements Initializable {
                 .toList();
 
         printedEvaluationsList.setAll(readyEvals);
-        if (lblEvalCount != null) {
-            lblEvalCount.setText(readyEvals.size() + " épreuve(s) prête(s)");
+        updateCountLabel(readyEvals.size());
+        if (evalCardsScroll != null && evalCardsScroll.isVisible()) {
+            renderCards();
         }
     }
 
@@ -1203,16 +1368,6 @@ public class CorrectionViewController implements Initializable {
             openPdfForEvaluation(currentEvaluation);
         } else {
             notificationService.showWarning("Sélection requise", "Veuillez d'abord sélectionner une évaluation.");
-        }
-    }
-
-    @FXML
-    public void onOpenPdfFromList() {
-        Evaluation selected = evaluationsTable.getSelectionModel().getSelectedItem();
-        if (selected != null) {
-            openPdfForEvaluation(selected);
-        } else {
-            notificationService.showWarning("Sélection requise", "Veuillez sélectionner une épreuve dans la liste.");
         }
     }
 

@@ -20,31 +20,65 @@
             <Label text="Créez vos sujets, configurez vos barèmes et générez les copies d'examen • Double-cliquez pour ouvrir" styleClass="page-subtitle"/>
         </VBox>
         <TextField fx:id="searchField" promptText="Filtrer les évaluations..." prefWidth="240" styleClass="search-field"/>
+        <HBox alignment="CENTER" styleClass="view-toggle-group">
+            <ToggleButton fx:id="btnViewList" styleClass="view-toggle-btn">
+                <graphic>
+                    <FontIcon iconLiteral="fth-list" iconSize="15"/>
+                </graphic>
+                <tooltip><Tooltip text="Affichage en liste"/></tooltip>
+            </ToggleButton>
+            <ToggleButton fx:id="btnViewGrid" styleClass="view-toggle-btn">
+                <graphic>
+                    <FontIcon iconLiteral="fth-grid" iconSize="15"/>
+                </graphic>
+                <tooltip><Tooltip text="Affichage en cartes"/></tooltip>
+            </ToggleButton>
+        </HBox>
         <Button fx:id="btnNewEval" text="Nouvelle évaluation" styleClass="btn-primary" onAction="#onNewEvaluation"/>
     </HBox>
 
-    <!-- Tableau des Évaluations prenant tout l'espace disponible -->
-    <TableView fx:id="evalTable" VBox.vgrow="ALWAYS" maxHeight="Infinity" maxWidth="Infinity" minHeight="200" styleClass="table-view">
-        <columns>
-            <TableColumn fx:id="colDesignation" text="Intitulé de l'évaluation" prefWidth="280" minWidth="180"/>
-            <TableColumn fx:id="colType" text="Type d'évaluation" prefWidth="200" minWidth="140"/>
-            <TableColumn fx:id="colDate" text="Date de création" prefWidth="130" minWidth="110" maxWidth="150"/>
-            <TableColumn fx:id="colState" text="Statut" prefWidth="130" minWidth="110" maxWidth="160"/>
-            <TableColumn fx:id="colQuestions" text="Questions" prefWidth="100" minWidth="80" maxWidth="120"/>
-            <TableColumn fx:id="colActions" text="Actions" prefWidth="70" minWidth="60" maxWidth="90" style="-fx-alignment: CENTER;"/>
-        </columns>
-        <columnResizePolicy>
-            <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
-        </columnResizePolicy>
-        <placeholder>
-            <VBox alignment="CENTER" spacing="12" styleClass="empty-state-box">
-                <HBox alignment="CENTER" styleClass="empty-state-icon-container">
-                    <FontIcon iconLiteral="fth-file-plus" iconColor="#004faa" iconSize="32"/>
-                </HBox>
-                <Label text="Aucune évaluation trouvée" styleClass="empty-state-title"/>
-                <Label text="Créez votre première évaluation pour ce groupe en quelques clics." styleClass="empty-state-subtitle"/>
-                <Button text="Nouvelle évaluation" styleClass="btn-primary" onAction="#onNewEvaluation"/>
+    <!-- Zone de contenu (Tableau ou Cartes) -->
+    <StackPane VBox.vgrow="ALWAYS" maxHeight="Infinity" maxWidth="Infinity">
+        <!-- Tableau des Évaluations prenant tout l'espace disponible -->
+        <TableView fx:id="evalTable" maxHeight="Infinity" maxWidth="Infinity" minHeight="200" styleClass="table-view">
+            <columns>
+                <TableColumn fx:id="colDesignation" text="Intitulé de l'évaluation" prefWidth="280" minWidth="180"/>
+                <TableColumn fx:id="colType" text="Type d'évaluation" prefWidth="200" minWidth="140"/>
+                <TableColumn fx:id="colDate" text="Date de création" prefWidth="130" minWidth="110" maxWidth="150"/>
+                <TableColumn fx:id="colState" text="Statut" prefWidth="130" minWidth="110" maxWidth="160"/>
+                <TableColumn fx:id="colQuestions" text="Questions" prefWidth="100" minWidth="80" maxWidth="120"/>
+                <TableColumn fx:id="colActions" text="Actions" prefWidth="70" minWidth="60" maxWidth="90" style="-fx-alignment: CENTER;"/>
+            </columns>
+            <columnResizePolicy>
+                <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+            </columnResizePolicy>
+            <placeholder>
+                <VBox alignment="CENTER" spacing="12" styleClass="empty-state-box">
+                    <HBox alignment="CENTER" styleClass="empty-state-icon-container">
+                        <FontIcon iconLiteral="fth-file-plus" iconColor="#004faa" iconSize="32"/>
+                    </HBox>
+                    <Label text="Aucune évaluation trouvée" styleClass="empty-state-title"/>
+                    <Label text="Créez votre première évaluation pour ce groupe en quelques clics." styleClass="empty-state-subtitle"/>
+                    <Button text="Nouvelle évaluation" styleClass="btn-primary" onAction="#onNewEvaluation"/>
+                </VBox>
+            </placeholder>
+        </TableView>
+
+        <!-- Grille de Cartes d'Évaluations -->
+        <ScrollPane fx:id="evalCardsScroll" fitToWidth="true" styleClass="main-content-scroll" hbarPolicy="NEVER"
+                    visible="false" managed="false" maxHeight="Infinity" maxWidth="Infinity">
+            <VBox spacing="16">
+                <!-- Message d'état vide pour les cartes -->
+                <VBox fx:id="cardsEmptyStateBox" alignment="CENTER" spacing="12" visible="false" managed="false" styleClass="empty-state-box">
+                    <HBox alignment="CENTER" styleClass="empty-state-icon-container">
+                        <FontIcon iconLiteral="fth-file-plus" iconColor="#004faa" iconSize="32"/>
+                    </HBox>
+                    <Label text="Aucune évaluation trouvée" styleClass="empty-state-title"/>
+                    <Label text="Créez votre première évaluation pour ce groupe en quelques clics." styleClass="empty-state-subtitle"/>
+                    <Button text="Nouvelle évaluation" styleClass="btn-primary" onAction="#onNewEvaluation"/>
+                </VBox>
+                <FlowPane fx:id="evalCardsFlowPane" hgap="16" vgap="16"/>
             </VBox>
-        </placeholder>
-    </TableView>
+        </ScrollPane>
+    </StackPane>
 </VBox>

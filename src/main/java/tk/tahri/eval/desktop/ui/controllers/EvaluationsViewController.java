@@ -10,13 +10,17 @@ import javafx.geometry.Pos;
 import javafx.geometry.Side;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 import org.kordamp.ikonli.feather.Feather;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
+import tk.tahri.eval.desktop.config.AppPreferences;
 import tk.tahri.eval.desktop.document.services.DocumentService;
 import tk.tahri.eval.desktop.model.Group;
 import tk.tahri.eval.desktop.model.Evaluation;
@@ -42,6 +46,12 @@ public class EvaluationsViewController implements Initializable {
     @FXML private TextField searchField;
     @FXML private Label lblEvalCount;
 
+    @FXML private ToggleButton btnViewList;
+    @FXML private ToggleButton btnViewGrid;
+    @FXML private ScrollPane evalCardsScroll;
+    @FXML private FlowPane evalCardsFlowPane;
+    @FXML private VBox cardsEmptyStateBox;
+
     @FXML private TableView<Evaluation> evalTable;
     @FXML private TableColumn<Evaluation, String> colDesignation;
     @FXML private TableColumn<Evaluation, String> colType;
@@ -54,6 +64,7 @@ public class EvaluationsViewController implements Initializable {
     private final EvaluationService evaluationService;
     private final DocumentService documentService;
     private final NotificationService notificationService;
+    private final AppPreferences appPreferences;
     private final MainLayoutController mainLayoutController;
 
     private final ObservableList<Evaluation> evalList = FXCollections.observableArrayList();
@@ -65,11 +76,13 @@ public class EvaluationsViewController implements Initializable {
                                      EvaluationService evaluationService,
                                      DocumentService documentService,
                                      NotificationService notificationService,
+                                     AppPreferences appPreferences,
                                      @Lazy MainLayoutController mainLayoutController) {
         this.groupService = groupService;
         this.evaluationService = evaluationService;
         this.documentService = documentService;
         this.notificationService = notificationService;
+        this.appPreferences = appPreferences;
         this.mainLayoutController = mainLayoutController;
     }
 
@@ -78,9 +91,174 @@ public class EvaluationsViewController implements Initializable {
         setupTable();
         setupIcons();
         setupListeners();
+        setupViewToggle();
         if (mainLayoutController != null) {
             mainLayoutController.clearActiveEvaluation();
         }
+    }
+
+    private void setupViewToggle() {
+        if (btnViewList == null || btnViewGrid == null) return;
+
+        ToggleGroup viewGroup = new ToggleGroup();
+        btnViewList.setToggleGroup(viewGroup);
+        btnViewGrid.setToggleGroup(viewGroup);
+
+        AppPreferences.ViewMode mode = appPreferences != null ? appPreferences.getEvaluationsViewMode() : AppPreferences.ViewMode.LIST;
+        if (mode == AppPreferences.ViewMode.GRID) {
+            btnViewGrid.setSelected(true);
+            applyViewMode(AppPreferences.ViewMode.GRID);
+        } else {
+            btnViewList.setSelected(true);
+            applyViewMode(AppPreferences.ViewMode.LIST);
+        }
+
+        viewGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal == null) {
+                if (oldVal != null) {
+                    oldVal.setSelected(true);
+                }
+                return;
+            }
+            AppPreferences.ViewMode selectedMode = newVal == btnViewGrid ? AppPreferences.ViewMode.GRID : AppPreferences.ViewMode.LIST;
+            applyViewMode(selectedMode);
+            if (appPreferences != null) {
+                appPreferences.setEvaluationsViewMode(selectedMode);
+            }
+        });
+    }
+
+    private void applyViewMode(AppPreferences.ViewMode mode) {
+        boolean isGrid = (mode == AppPreferences.ViewMode.GRID);
+        if (evalTable != null) {
+            evalTable.setVisible(!isGrid);
+            evalTable.setManaged(!isGrid);
+        }
+        if (evalCardsScroll != null) {
+            evalCardsScroll.setVisible(isGrid);
+            evalCardsScroll.setManaged(isGrid);
+        }
+        if (isGrid) {
+            renderCards();
+        }
+    }
+
+    private void renderCards() {
+        if (evalCardsFlowPane == null) return;
+        evalCardsFlowPane.getChildren().clear();
+
+        List<Evaluation> items = filteredEvalList != null ? filteredEvalList : evalList;
+        if (items.isEmpty()) {
+            if (cardsEmptyStateBox != null) {
+                cardsEmptyStateBox.setVisible(true);
+                cardsEmptyStateBox.setManaged(true);
+            }
+            return;
+        }
+
+        if (cardsEmptyStateBox != null) {
+            cardsEmptyStateBox.setVisible(false);
+            cardsEmptyStateBox.setManaged(false);
+        }
+
+        for (Evaluation eval : items) {
+            evalCardsFlowPane.getChildren().add(createEvaluationCard(eval));
+        }
+    }
+
+    private VBox createEvaluationCard(Evaluation eval) {
+        VBox card = new VBox(10);
+        card.getStyleClass().add("eval-card");
+
+        // Ligne supérieure : Titre et Badge de Statut
+        HBox topRow = new HBox(8);
+        topRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label lblTitle = new Label(eval.getDesignation() != null ? eval.getDesignation() : "Sans nom");
+        lblTitle.getStyleClass().add("eval-card-title");
+        lblTitle.setMaxWidth(180);
+        lblTitle.setWrapText(true);
+        HBox.setHgrow(lblTitle, Priority.ALWAYS);
+
+        Label lblState = new Label();
+        lblState.getStyleClass().addAll("tag-badge", "eval-card-badge");
+        if (eval.getState() == EvaluationState.PRINTED) {
+            lblState.setText("Sujets imprimés");
+            lblState.setStyle("-fx-background-color: #e6f4ea; -fx-text-fill: #137333;");
+        } else if (eval.getState() == EvaluationState.ARCHIVED) {
+            lblState.setText("Archivée");
+            lblState.setStyle("-fx-background-color: #f1f3f4; -fx-text-fill: #5f6368;");
+        } else {
+            lblState.setText("Brouillon / Conception");
+            lblState.setStyle("-fx-background-color: #fef7e0; -fx-text-fill: #b06000;");
+        }
+
+        topRow.getChildren().addAll(lblTitle, lblState);
+
+        // Badge du Type d'évaluation
+        HBox typeRow = new HBox(6);
+        typeRow.setAlignment(Pos.CENTER_LEFT);
+        Label lblType = new Label(eval.getType() != null ? eval.getType() : Evaluation.TYPE_CONTROLE_CONTINU);
+        lblType.setStyle("-fx-background-color: -color-bg-subtle; -fx-text-fill: -color-fg-muted; -fx-padding: 2 6; -fx-background-radius: 4px; -fx-font-size: 11px;");
+        typeRow.getChildren().add(lblType);
+
+        // Informations & Métadonnées
+        VBox detailsBox = new VBox(4);
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        String dateStr = eval.getCreatedAt() != null ? eval.getCreatedAt().format(dtf) : "-";
+        int qCount = eval.getQuestions() != null ? eval.getQuestions().size() : 0;
+        long durationMin = eval.getDuration() != null ? eval.getDuration().toMinutes() : 60;
+
+        Label lblDate = new Label("📅 Date : " + dateStr);
+        lblDate.getStyleClass().add("eval-card-meta");
+
+        Label lblQuestions = new Label("❓ " + qCount + " question" + (qCount > 1 ? "s" : "") + " • Durée : " + durationMin + " min");
+        lblQuestions.getStyleClass().add("eval-card-meta");
+
+        Label lblOptions = new Label("📄 " + (eval.isDoubleSided() ? "Recto-Verso" : "Recto seul") + " • " + eval.getColumnCount() + " colonne" + (eval.getColumnCount() > 1 ? "s" : ""));
+        lblOptions.getStyleClass().add("eval-card-meta");
+
+        detailsBox.getChildren().addAll(lblDate, lblQuestions, lblOptions);
+
+        // Barre d'actions
+        HBox actionsRow = new HBox(8);
+        actionsRow.setAlignment(Pos.CENTER_RIGHT);
+        HBox.setHgrow(actionsRow, Priority.ALWAYS);
+
+        Button btnAction = new Button(eval.getState() == EvaluationState.CONCEPTION ? "Éditer" : "Consulter");
+        btnAction.getStyleClass().add("btn-primary");
+        btnAction.setStyle("-fx-font-size: 11px; -fx-padding: 4 10;");
+        btnAction.setOnAction(e -> {
+            e.consume();
+            if (mainLayoutController != null) {
+                mainLayoutController.openEvaluationBuilder(eval.getId());
+            }
+        });
+
+        Button btnDelete = new Button();
+        FontIcon trashIcon = new FontIcon(Feather.TRASH_2);
+        trashIcon.setIconSize(13);
+        trashIcon.setIconColor(javafx.scene.paint.Color.web("#ba1a1a"));
+        btnDelete.setGraphic(trashIcon);
+        btnDelete.getStyleClass().add("card-action-btn");
+        btnDelete.setTooltip(new Tooltip("Supprimer l'évaluation"));
+        btnDelete.setOnAction(e -> {
+            e.consume();
+            deleteEvaluation(eval);
+        });
+
+        actionsRow.getChildren().addAll(btnDelete, btnAction);
+
+        card.getChildren().addAll(topRow, typeRow, detailsBox, actionsRow);
+
+        // Clic sur l'ensemble de la carte
+        card.setOnMouseClicked(event -> {
+            if (mainLayoutController != null) {
+                mainLayoutController.openEvaluationBuilder(eval.getId());
+            }
+        });
+
+        return card;
     }
 
     private void setupTable() {
@@ -308,6 +486,9 @@ public class EvaluationsViewController implements Initializable {
             });
         }
         updateCountLabel(filteredEvalList.size());
+        if (evalCardsScroll != null && evalCardsScroll.isVisible()) {
+            renderCards();
+        }
     }
 
     private void updateCountLabel(int count) {
@@ -331,6 +512,11 @@ public class EvaluationsViewController implements Initializable {
             evalList.clear();
             fullEvalList.clear();
             updateCountLabel(0);
+            if (evalCardsFlowPane != null) evalCardsFlowPane.getChildren().clear();
+            if (cardsEmptyStateBox != null) {
+                cardsEmptyStateBox.setVisible(true);
+                cardsEmptyStateBox.setManaged(true);
+            }
         }
     }
 

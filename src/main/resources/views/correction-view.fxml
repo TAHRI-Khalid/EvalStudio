@@ -13,33 +13,63 @@
     <VBox fx:id="evalSelectionView" spacing="14" VBox.vgrow="ALWAYS" maxHeight="Infinity">
         <HBox alignment="CENTER_LEFT" spacing="16" styleClass="view-header">
             <VBox HBox.hgrow="ALWAYS" spacing="2">
-                <Label text="Correction &amp; Résultats" styleClass="page-title"/>
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <Label text="Correction &amp; Résultats" styleClass="page-title"/>
+                    <Label fx:id="lblEvalCount" text="0 épreuve prête" styleClass="tag-badge"
+                           style="-fx-font-size: 11px; -fx-font-weight: 600;"/>
+                </HBox>
                 <Label text="Épreuves prêtes pour impression • Cliquez sur une épreuve pour afficher son tableau de bord" styleClass="page-subtitle"/>
             </VBox>
-            <Button fx:id="btnOpenPdfFromList" text="Voir le PDF généré" disable="true" onAction="#onOpenPdfFromList"/>
-            <Label fx:id="lblEvalCount" text="0 épreuve(s) prête(s)" style="-fx-font-size: 12px; -fx-text-fill: #424753; -fx-font-weight: 600;"/>
+            <HBox alignment="CENTER" styleClass="view-toggle-group">
+                <ToggleButton fx:id="btnViewList" styleClass="view-toggle-btn">
+                    <graphic>
+                        <FontIcon iconLiteral="fth-list" iconSize="15"/>
+                    </graphic>
+                    <tooltip><Tooltip text="Affichage en liste"/></tooltip>
+                </ToggleButton>
+                <ToggleButton fx:id="btnViewGrid" styleClass="view-toggle-btn">
+                    <graphic>
+                        <FontIcon iconLiteral="fth-grid" iconSize="15"/>
+                    </graphic>
+                    <tooltip><Tooltip text="Affichage en cartes"/></tooltip>
+                </ToggleButton>
+            </HBox>
         </HBox>
 
-        <TableView fx:id="evaluationsTable" VBox.vgrow="ALWAYS" maxHeight="Infinity" maxWidth="Infinity" minHeight="200" styleClass="table-view">
-            <columns>
-                <TableColumn fx:id="colEvalDesignation" text="Intitulé de l'épreuve" prefWidth="280" minWidth="180"/>
-                <TableColumn fx:id="colEvalType" text="Type d'évaluation" prefWidth="180" minWidth="140"/>
-                <TableColumn fx:id="colEvalDate" text="Date de création" prefWidth="130" minWidth="110" maxWidth="150"/>
-                <TableColumn fx:id="colEvalQuestions" text="Questions" prefWidth="110" minWidth="90" maxWidth="130"/>
-                <TableColumn fx:id="colEvalState" text="Statut" prefWidth="180" minWidth="150" maxWidth="220"/>
-                <TableColumn fx:id="colEvalAction" text="Action" prefWidth="150" minWidth="130" maxWidth="180" style="-fx-alignment: CENTER;"/>
-            </columns>
-            <columnResizePolicy>
-                <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
-            </columnResizePolicy>
-            <placeholder>
-                <VBox alignment="CENTER" spacing="10">
-                    <FontIcon iconLiteral="fth-inbox" iconColor="#74777f" iconSize="36"/>
-                    <Label text="Aucune épreuve prête pour impression ou correction" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #424753;"/>
-                    <Label text="Générez d'abord les copies PDF d'une évaluation dans l'onglet « Évaluations » pour qu'elle apparaisse ici." style="-fx-text-fill: #74777f; -fx-font-size: 12px;"/>
+        <StackPane VBox.vgrow="ALWAYS" maxHeight="Infinity" maxWidth="Infinity">
+            <TableView fx:id="evaluationsTable" maxHeight="Infinity" maxWidth="Infinity" minHeight="200" styleClass="table-view">
+                <columns>
+                    <TableColumn fx:id="colEvalDesignation" text="Intitulé de l'épreuve" prefWidth="280" minWidth="180"/>
+                    <TableColumn fx:id="colEvalType" text="Type d'évaluation" prefWidth="180" minWidth="140"/>
+                    <TableColumn fx:id="colEvalDate" text="Date de création" prefWidth="130" minWidth="110" maxWidth="150"/>
+                    <TableColumn fx:id="colEvalQuestions" text="Questions" prefWidth="110" minWidth="90" maxWidth="130"/>
+                    <TableColumn fx:id="colEvalState" text="Statut" prefWidth="180" minWidth="150" maxWidth="220"/>
+                    <TableColumn fx:id="colEvalAction" text="Action" prefWidth="150" minWidth="130" maxWidth="180" style="-fx-alignment: CENTER;"/>
+                </columns>
+                <columnResizePolicy>
+                    <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                </columnResizePolicy>
+                <placeholder>
+                    <VBox alignment="CENTER" spacing="10">
+                        <FontIcon iconLiteral="fth-inbox" iconColor="#74777f" iconSize="36"/>
+                        <Label text="Aucune épreuve prête pour impression ou correction" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #424753;"/>
+                        <Label text="Générez d'abord les copies PDF d'une évaluation dans l'onglet « Évaluations » pour qu'elle apparaisse ici." style="-fx-text-fill: #74777f; -fx-font-size: 12px;"/>
+                    </VBox>
+                </placeholder>
+            </TableView>
+
+            <ScrollPane fx:id="evalCardsScroll" fitToWidth="true" styleClass="main-content-scroll" hbarPolicy="NEVER"
+                        visible="false" managed="false" maxHeight="Infinity" maxWidth="Infinity">
+                <VBox spacing="16">
+                    <VBox fx:id="cardsEmptyStateBox" alignment="CENTER" spacing="10" visible="false" managed="false" style="-fx-padding: 40 0;">
+                        <FontIcon iconLiteral="fth-inbox" iconColor="#74777f" iconSize="36"/>
+                        <Label text="Aucune épreuve prête pour impression ou correction" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #424753;"/>
+                        <Label text="Générez d'abord les copies PDF d'une évaluation dans l'onglet « Évaluations » pour qu'elle apparaisse ici." style="-fx-text-fill: #74777f; -fx-font-size: 12px;"/>
+                    </VBox>
+                    <FlowPane fx:id="evalCardsFlowPane" hgap="16" vgap="16"/>
                 </VBox>
-            </placeholder>
-        </TableView>
+            </ScrollPane>
+        </StackPane>
     </VBox>
 
     <!-- 2. Vue Tableau de bord de l'évaluation -->

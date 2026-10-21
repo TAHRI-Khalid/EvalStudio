@@ -680,4 +680,81 @@
     -fx-border-radius: 4px;
 }
 
+/* Boutons de bascule Vue Liste / Grille */
+.view-toggle-group {
+    -fx-background-color: -color-bg-subtle;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 1px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-padding: 2px;
+}
+
+.view-toggle-btn {
+    -fx-background-color: transparent;
+    -fx-background-radius: 6px;
+    -fx-padding: 5 10 5 10;
+    -fx-cursor: hand;
+    -fx-text-fill: -color-fg-muted;
+}
+
+.view-toggle-btn:hover {
+    -fx-background-color: -color-bg-subtle;
+    -fx-text-fill: -color-fg-default;
+}
+
+.view-toggle-btn:selected {
+    -fx-background-color: -color-bg-default;
+    -fx-text-fill: -color-accent-emphasis;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.08), 4, 0, 0, 1);
+}
+
+.view-toggle-btn .ikonli-font-icon {
+    -fx-icon-color: -color-fg-muted;
+}
+
+.view-toggle-btn:selected .ikonli-font-icon {
+    -fx-icon-color: -color-accent-emphasis;
+}
+
+/* Cartes d'évaluation (Eval Cards) */
+.eval-card {
+    -fx-background-color: -color-bg-default;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 1px;
+    -fx-border-radius: 12px;
+    -fx-background-radius: 12px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.05), 10, 0, 0, 2);
+    -fx-cursor: hand;
+    -fx-min-width: 300px;
+    -fx-pref-width: 320px;
+    -fx-max-width: 360px;
+    -fx-padding: 16px;
+}
+
+.eval-card:hover {
+    -fx-border-color: -color-accent-emphasis;
+    -fx-effect: dropshadow(gaussian, rgba(0, 79, 170, 0.16), 14, 0, 0, 4);
+    -fx-translate-y: -2px;
+}
+
+.eval-card-title {
+    -fx-font-size: 15px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -color-fg-default;
+}
+
+.eval-card-meta {
+    -fx-font-size: 12px;
+    -fx-text-fill: -color-fg-muted;
+}
+
+.eval-card-badge {
+    -fx-font-size: 11px;
+    -fx-font-weight: 600;
+    -fx-padding: 2 8 2 8;
+    -fx-background-radius: 6px;
+}
+
+
 

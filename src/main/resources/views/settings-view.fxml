@@ -11,7 +11,7 @@
     <!-- En-tête -->
     <VBox spacing="2" styleClass="view-header">
         <Label text="Paramètres &amp; Environnement" styleClass="view-title"/>
-        <Label text="État des moteurs d'analyse, de la base de données locale et personnalisation" style="-fx-text-fill: -color-fg-muted;"/>
+        <Label text="État des moteurs d'analyse et de la base de données locale" style="-fx-text-fill: -color-fg-muted;"/>
     </VBox>
 
     <GridPane hgap="16" vgap="16">
@@ -40,15 +40,6 @@
                 <Label text="Modèle ONNX :" style="-fx-font-weight: bold;" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
                 <Label fx:id="lblOnnxStatus" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
             </GridPane>
-        </VBox>
-
-        <!-- Carte Thème & Apparence -->
-        <VBox spacing="10" styleClass="card" GridPane.rowIndex="1" GridPane.columnIndex="0" prefWidth="480">
-            <Label text="Thème Visuel (AtlantaFX)" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
-            <VBox spacing="6">
-                <Label text="Sélectionnez le style de l'interface :"/>
-                <ComboBox fx:id="comboThemes" maxWidth="Infinity"/>
-            </VBox>
         </VBox>
     </GridPane>
 </VBox>

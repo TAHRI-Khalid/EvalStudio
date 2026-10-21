@@ -70,7 +70,7 @@ public class OneColumnAssessment {
             sharedData.addPageNumbersAndBarcode(pageNumber, this.blueprintAssessment.getId());
         }
 
-        if (this.sharedData.evaluation.doubleSided() && pageNumber != 1 && pageNumber % 2 != 0) {
+        if (this.sharedData.evaluation.doubleSided() && pageNumber % 2 != 0) {
             var c = sharedData.addPageToTheDocument(false, false);
             c.close();
         }

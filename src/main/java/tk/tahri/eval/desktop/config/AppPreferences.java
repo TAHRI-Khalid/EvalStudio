@@ -18,6 +18,7 @@ public class AppPreferences {
 
     public static final String KEY_EVAL_VIEW_MODE = "view.evaluations.mode";
     public static final String KEY_CORRECTION_VIEW_MODE = "view.correction.mode";
+    public static final String KEY_EXPORT_DIR = "export.directory";
 
     public enum ViewMode {
         LIST, GRID
@@ -94,5 +95,13 @@ public class AppPreferences {
 
     public void setCorrectionViewMode(ViewMode mode) {
         setViewMode(KEY_CORRECTION_VIEW_MODE, mode);
+    }
+
+    public String getExportDirectory() {
+        return get(KEY_EXPORT_DIR, System.getProperty("user.home"));
+    }
+
+    public void setExportDirectory(String dir) {
+        set(KEY_EXPORT_DIR, dir);
     }
 }

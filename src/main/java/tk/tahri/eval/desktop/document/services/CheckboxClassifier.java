@@ -130,6 +130,14 @@ public class CheckboxClassifier implements AutoCloseable {
         return classId == 1 || classId == 3;
     }
 
+    public boolean isReady() {
+        return session != null;
+    }
+
+    public String getModelPath() {
+        return modelPath;
+    }
+
     @PreDestroy
     @Override
     public synchronized void close() {

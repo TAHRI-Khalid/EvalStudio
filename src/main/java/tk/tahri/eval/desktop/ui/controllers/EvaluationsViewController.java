@@ -170,16 +170,19 @@ public class EvaluationsViewController implements Initializable {
         VBox card = new VBox(10);
         card.getStyleClass().add("eval-card");
 
-        // Ligne supérieure : Titre et Badge de Statut
-        HBox topRow = new HBox(8);
-        topRow.setAlignment(Pos.CENTER_LEFT);
-
+        // Titre sur toute la largeur (2 lignes allouées pour ne pas couper le texte)
         Label lblTitle = new Label(eval.getDesignation() != null ? eval.getDesignation() : "Sans nom");
         lblTitle.getStyleClass().add("eval-card-title");
-        lblTitle.setMaxWidth(180);
         lblTitle.setWrapText(true);
-        HBox.setHgrow(lblTitle, Priority.ALWAYS);
+        lblTitle.setAlignment(Pos.TOP_LEFT);
+        lblTitle.setMaxWidth(Double.MAX_VALUE);
+        lblTitle.setMinHeight(46);
+        lblTitle.setMaxHeight(60);
+        if (eval.getDesignation() != null && !eval.getDesignation().isBlank()) {
+            lblTitle.setTooltip(new Tooltip(eval.getDesignation()));
+        }
 
+        // Badges : Statut DEVANT le Type
         Label lblState = new Label();
         lblState.getStyleClass().addAll("tag-badge", "eval-card-badge");
         if (eval.getState() == EvaluationState.PRINTED) {
@@ -193,14 +196,11 @@ public class EvaluationsViewController implements Initializable {
             lblState.setStyle("-fx-background-color: #fef7e0; -fx-text-fill: #b06000;");
         }
 
-        topRow.getChildren().addAll(lblTitle, lblState);
-
-        // Badge du Type d'évaluation
-        HBox typeRow = new HBox(6);
-        typeRow.setAlignment(Pos.CENTER_LEFT);
         Label lblType = new Label(eval.getType() != null ? eval.getType() : Evaluation.TYPE_CONTROLE_CONTINU);
         lblType.setStyle("-fx-background-color: -color-bg-subtle; -fx-text-fill: -color-fg-muted; -fx-padding: 2 6; -fx-background-radius: 4px; -fx-font-size: 11px;");
-        typeRow.getChildren().add(lblType);
+
+        HBox badgesRow = new HBox(8, lblState, lblType);
+        badgesRow.setAlignment(Pos.CENTER_LEFT);
 
         // Informations & Métadonnées
         VBox detailsBox = new VBox(4);
@@ -220,36 +220,86 @@ public class EvaluationsViewController implements Initializable {
 
         detailsBox.getChildren().addAll(lblDate, lblQuestions, lblOptions);
 
-        // Barre d'actions
-        HBox actionsRow = new HBox(8);
-        actionsRow.setAlignment(Pos.CENTER_RIGHT);
-        HBox.setHgrow(actionsRow, Priority.ALWAYS);
+        // Corps de la carte (Body)
+        VBox body = new VBox(10);
+        body.getChildren().addAll(lblTitle, badgesRow, detailsBox);
+        VBox.setVgrow(body, Priority.ALWAYS);
 
-        Button btnAction = new Button(eval.getState() == EvaluationState.CONCEPTION ? "Éditer" : "Consulter");
-        btnAction.getStyleClass().add("btn-primary");
-        btnAction.setStyle("-fx-font-size: 11px; -fx-padding: 4 10;");
-        btnAction.setOnAction(e -> {
+        // Pied de carte (Footer) avec menu kebab pour les actions
+        HBox footer = new HBox(8);
+        footer.setAlignment(Pos.CENTER_RIGHT);
+        footer.getStyleClass().add("eval-card-footer");
+
+        Button btnMenu = new Button();
+        btnMenu.getStyleClass().add("card-action-btn");
+        FontIcon kebabIcon = new FontIcon(Feather.MORE_VERTICAL);
+        kebabIcon.setIconSize(15);
+        btnMenu.setGraphic(kebabIcon);
+        btnMenu.setTooltip(new Tooltip("Actions de l'évaluation"));
+
+        ContextMenu menu = new ContextMenu();
+
+        if (eval.getState() == EvaluationState.CONCEPTION) {
+            MenuItem itemEdit = new MenuItem("Concevoir / Éditer les questions");
+            FontIcon editIcon = new FontIcon(Feather.EDIT_3);
+            editIcon.setIconSize(13);
+            itemEdit.setGraphic(editIcon);
+            itemEdit.setOnAction(ev -> {
+                ev.consume();
+                if (mainLayoutController != null) {
+                    mainLayoutController.openEvaluationBuilder(eval.getId());
+                }
+            });
+            menu.getItems().add(itemEdit);
+        } else {
+            MenuItem itemView = new MenuItem("Consulter le sujet (lecture seule)");
+            FontIcon viewIcon = new FontIcon(Feather.EYE);
+            viewIcon.setIconSize(13);
+            itemView.setGraphic(viewIcon);
+            itemView.setOnAction(ev -> {
+                ev.consume();
+                if (mainLayoutController != null) {
+                    mainLayoutController.openEvaluationBuilder(eval.getId());
+                }
+            });
+
+            MenuItem itemReset = new MenuItem("Retourner en mode conception");
+            FontIcon resetIcon = new FontIcon(Feather.ROTATE_CCW);
+            resetIcon.setIconSize(13);
+            resetIcon.setIconColor(javafx.scene.paint.Color.web("#ba1a1a"));
+            itemReset.setGraphic(resetIcon);
+            itemReset.setOnAction(ev -> {
+                ev.consume();
+                resetEvaluationToConception(eval);
+            });
+
+            menu.getItems().addAll(itemView, itemReset);
+        }
+
+        MenuItem itemDelete = new MenuItem("Supprimer l'évaluation");
+        FontIcon trashIcon = new FontIcon(Feather.TRASH_2);
+        trashIcon.setIconColor(javafx.scene.paint.Color.web("#ba1a1a"));
+        trashIcon.setIconSize(13);
+        itemDelete.setGraphic(trashIcon);
+        itemDelete.setOnAction(ev -> {
+            ev.consume();
+            deleteEvaluation(eval);
+        });
+        menu.getItems().add(itemDelete);
+
+        btnMenu.setOnAction(e -> {
             e.consume();
-            if (mainLayoutController != null) {
-                mainLayoutController.openEvaluationBuilder(eval.getId());
+            if (menu.isShowing()) {
+                menu.hide();
+            } else {
+                menu.show(btnMenu, Side.BOTTOM, 0, 0);
             }
         });
 
-        Button btnDelete = new Button();
-        FontIcon trashIcon = new FontIcon(Feather.TRASH_2);
-        trashIcon.setIconSize(13);
-        trashIcon.setIconColor(javafx.scene.paint.Color.web("#ba1a1a"));
-        btnDelete.setGraphic(trashIcon);
-        btnDelete.getStyleClass().add("card-action-btn");
-        btnDelete.setTooltip(new Tooltip("Supprimer l'évaluation"));
-        btnDelete.setOnAction(e -> {
-            e.consume();
-            deleteEvaluation(eval);
-        });
+        footer.getChildren().add(btnMenu);
+        footer.setOnMouseClicked(javafx.event.Event::consume);
 
-        actionsRow.getChildren().addAll(btnDelete, btnAction);
-
-        card.getChildren().addAll(topRow, typeRow, detailsBox, actionsRow);
+        card.getChildren().addAll(body, footer);
 
         // Clic sur l'ensemble de la carte
         card.setOnMouseClicked(event -> {

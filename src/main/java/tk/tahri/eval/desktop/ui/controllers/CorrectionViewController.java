@@ -11,6 +11,7 @@ import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
+import javafx.geometry.Side;
 import javafx.scene.control.*;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.TransferMode;
@@ -390,16 +391,19 @@ public class CorrectionViewController implements Initializable {
         VBox card = new VBox(10);
         card.getStyleClass().add("eval-card");
 
-        // Ligne supérieure : Titre et Badge de Statut
-        HBox topRow = new HBox(8);
-        topRow.setAlignment(Pos.CENTER_LEFT);
-
+        // Titre sur toute la largeur (2 lignes allouées pour ne pas couper le texte)
         Label lblTitle = new Label(eval.getDesignation() != null ? eval.getDesignation() : "Sans nom");
         lblTitle.getStyleClass().add("eval-card-title");
-        lblTitle.setMaxWidth(180);
         lblTitle.setWrapText(true);
-        HBox.setHgrow(lblTitle, Priority.ALWAYS);
+        lblTitle.setAlignment(Pos.TOP_LEFT);
+        lblTitle.setMaxWidth(Double.MAX_VALUE);
+        lblTitle.setMinHeight(46);
+        lblTitle.setMaxHeight(60);
+        if (eval.getDesignation() != null && !eval.getDesignation().isBlank()) {
+            lblTitle.setTooltip(new Tooltip(eval.getDesignation()));
+        }
 
+        // Badges : Statut DEVANT le Type
         Label lblState = new Label();
         lblState.getStyleClass().addAll("tag-badge", "eval-card-badge");
         if (eval.getState() == EvaluationState.PRINTED) {
@@ -413,14 +417,11 @@ public class CorrectionViewController implements Initializable {
             lblState.setStyle("-fx-background-color: #e0f2fe; -fx-text-fill: #0369a1;");
         }
 
-        topRow.getChildren().addAll(lblTitle, lblState);
-
-        // Badge Type d'évaluation
-        HBox typeRow = new HBox(6);
-        typeRow.setAlignment(Pos.CENTER_LEFT);
         Label lblType = new Label(eval.getType() != null ? eval.getType() : Evaluation.TYPE_CONTROLE_CONTINU);
         lblType.setStyle("-fx-background-color: -color-bg-subtle; -fx-text-fill: -color-fg-muted; -fx-padding: 2 6; -fx-background-radius: 4px; -fx-font-size: 11px;");
-        typeRow.getChildren().add(lblType);
+
+        HBox badgesRow = new HBox(8, lblState, lblType);
+        badgesRow.setAlignment(Pos.CENTER_LEFT);
 
         // Informations & Métadonnées
         VBox detailsBox = new VBox(4);
@@ -440,32 +441,79 @@ public class CorrectionViewController implements Initializable {
 
         detailsBox.getChildren().addAll(lblDate, lblQuestions, lblOptions);
 
-        // Actions
-        HBox actionsRow = new HBox(8);
-        actionsRow.setAlignment(Pos.CENTER_RIGHT);
-        HBox.setHgrow(actionsRow, Priority.ALWAYS);
+        // Corps de la carte (Body)
+        VBox body = new VBox(10);
+        body.getChildren().addAll(lblTitle, badgesRow, detailsBox);
+        VBox.setVgrow(body, Priority.ALWAYS);
 
-        Button btnPdf = new Button();
-        btnPdf.getStyleClass().add("card-action-btn");
-        btnPdf.setGraphic(new FontIcon(Feather.FILE_TEXT));
-        btnPdf.setTooltip(new Tooltip("Voir le PDF généré"));
-        btnPdf.setOnAction(e -> {
-            e.consume();
-            openPdfForEvaluation(eval);
-        });
+        // Pied de carte (Footer) avec menu kebab pour les actions
+        HBox footer = new HBox(8);
+        footer.setAlignment(Pos.CENTER_RIGHT);
+        footer.getStyleClass().add("eval-card-footer");
 
-        Button btnDashboard = new Button("Corriger");
-        btnDashboard.getStyleClass().add("btn-primary");
-        btnDashboard.setStyle("-fx-font-size: 11px; -fx-padding: 4 10;");
-        btnDashboard.setGraphic(new FontIcon(Feather.ARROW_RIGHT));
-        btnDashboard.setOnAction(e -> {
-            e.consume();
+        Button btnMenu = new Button();
+        btnMenu.getStyleClass().add("card-action-btn");
+        FontIcon kebabIcon = new FontIcon(Feather.MORE_VERTICAL);
+        kebabIcon.setIconSize(15);
+        btnMenu.setGraphic(kebabIcon);
+        btnMenu.setTooltip(new Tooltip("Actions de l'évaluation"));
+
+        ContextMenu menu = new ContextMenu();
+
+        MenuItem itemDashboard = new MenuItem("Tableau de bord & Correction");
+        FontIcon dashIcon = new FontIcon(Feather.CHECK_CIRCLE);
+        dashIcon.setIconSize(13);
+        itemDashboard.setGraphic(dashIcon);
+        itemDashboard.setOnAction(ev -> {
+            ev.consume();
             openEvaluationDashboard(eval);
         });
 
-        actionsRow.getChildren().addAll(btnPdf, btnDashboard);
+        MenuItem itemPdf = new MenuItem("Voir le PDF de l'épreuve");
+        FontIcon pdfIcon = new FontIcon(Feather.FILE_TEXT);
+        pdfIcon.setIconSize(13);
+        itemPdf.setGraphic(pdfIcon);
+        itemPdf.setOnAction(ev -> {
+            ev.consume();
+            openPdfForEvaluation(eval);
+        });
 
-        card.getChildren().addAll(topRow, typeRow, detailsBox, actionsRow);
+        MenuItem itemView = new MenuItem("Consulter le sujet (lecture seule)");
+        FontIcon viewIcon = new FontIcon(Feather.EYE);
+        viewIcon.setIconSize(13);
+        itemView.setGraphic(viewIcon);
+        itemView.setOnAction(ev -> {
+            ev.consume();
+            if (mainLayoutController != null) {
+                mainLayoutController.openEvaluationBuilder(eval.getId());
+            }
+        });
+
+        MenuItem itemReset = new MenuItem("Retourner en mode conception");
+        FontIcon resetIcon = new FontIcon(Feather.ROTATE_CCW);
+        resetIcon.setIconSize(13);
+        resetIcon.setIconColor(javafx.scene.paint.Color.web("#ba1a1a"));
+        itemReset.setGraphic(resetIcon);
+        itemReset.setOnAction(ev -> {
+            ev.consume();
+            resetEvaluationToConception(eval);
+        });
+
+        menu.getItems().addAll(itemDashboard, itemPdf, itemView, itemReset);
+
+        btnMenu.setOnAction(e -> {
+            e.consume();
+            if (menu.isShowing()) {
+                menu.hide();
+            } else {
+                menu.show(btnMenu, Side.BOTTOM, 0, 0);
+            }
+        });
+
+        footer.getChildren().add(btnMenu);
+        footer.setOnMouseClicked(javafx.event.Event::consume);
+
+        card.getChildren().addAll(body, footer);
 
         // Clic sur l'ensemble de la carte
         card.setOnMouseClicked(event -> openEvaluationDashboard(eval));
@@ -1325,8 +1373,14 @@ public class CorrectionViewController implements Initializable {
     @FXML
     public void onResetToConception() {
         if (currentEvaluation == null) return;
+        resetEvaluationToConception(currentEvaluation);
+        returnToEvaluationsListDirectly();
+    }
 
-        String message = "Attention : cette action va repasser l'évaluation « " + currentEvaluation.getDesignation() + " » en mode conception.\n\n"
+    public void resetEvaluationToConception(Evaluation eval) {
+        if (eval == null) return;
+
+        String message = "Attention : cette action va repasser l'évaluation « " + eval.getDesignation() + " » en mode conception.\n\n"
                 + "Toutes les données de production associées seront DÉFINITIVEMENT supprimées :\n"
                 + "• Le document PDF des copies générées\n"
                 + "• Les grilles de copies et codes-barres étudiants\n"
@@ -1344,20 +1398,17 @@ public class CorrectionViewController implements Initializable {
         if (!confirmed) return;
 
         try {
-            String evalId = currentEvaluation.getId();
-            evaluationService.resetToConception(evalId);
+            evaluationService.resetToConception(eval.getId());
             notificationService.showSuccess(
                     "Mode conception restauré",
                     "L'évaluation a été réinitialisée en mode conception. Toutes les données de production ont été supprimées."
             );
 
-            returnToEvaluationsListDirectly();
-
             if (currentGroup != null) {
                 loadEvaluationsForGroup(currentGroup.getId());
             }
         } catch (Exception e) {
-            log.error("Erreur lors de la réinitialisation en mode conception de l'évaluation {}", currentEvaluation.getId(), e);
+            log.error("Erreur lors de la réinitialisation en mode conception de l'évaluation {}", eval.getId(), e);
             notificationService.showError("Erreur", "Impossible de réinitialiser l'évaluation : " + e.getMessage());
         }
     }

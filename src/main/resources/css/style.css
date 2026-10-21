@@ -756,5 +756,67 @@
     -fx-background-radius: 6px;
 }
 
+.eval-card-footer {
+    -fx-alignment: center-right;
+    -fx-padding: 0;
+}
+
+/* Page Paramètres (Settings) */
+.settings-scroll {
+    -fx-background-color: -color-bg-subtle;
+    -fx-background: -color-bg-subtle;
+    -fx-border-color: transparent;
+}
+
+.settings-card {
+    -fx-background-color: -color-bg-default;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 1px;
+    -fx-border-radius: 12px;
+    -fx-background-radius: 12px;
+    -fx-padding: 18px 20px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.04), 8, 0, 0, 2);
+}
+
+.settings-card-header {
+    -fx-spacing: 12px;
+    -fx-alignment: center-left;
+}
+
+.settings-card-title {
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -color-fg-default;
+}
+
+.settings-card-subtitle {
+    -fx-font-size: 11px;
+    -fx-text-fill: -color-fg-muted;
+}
+
+.settings-icon-container {
+    -fx-background-color: -color-accent-subtle;
+    -fx-padding: 8px;
+    -fx-background-radius: 8px;
+    -fx-min-width: 32px;
+    -fx-min-height: 32px;
+    -fx-alignment: center;
+}
+
+.settings-icon-container .ikonli-font-icon {
+    -fx-icon-color: -color-accent-emphasis;
+}
+
+.settings-field-label {
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+    -fx-text-fill: -color-fg-default;
+}
+
+.settings-field-value {
+    -fx-font-size: 12px;
+    -fx-text-fill: -color-fg-muted;
+}
+
 
 

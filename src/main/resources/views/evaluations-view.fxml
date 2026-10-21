@@ -20,6 +20,7 @@
             <Label text="Créez vos sujets, configurez vos barèmes et générez les copies d'examen • Double-cliquez pour ouvrir" styleClass="page-subtitle"/>
         </VBox>
         <TextField fx:id="searchField" promptText="Filtrer les évaluations..." prefWidth="240" styleClass="search-field"/>
+        <Button fx:id="btnNewEval" text="Nouvelle évaluation" styleClass="btn-primary" onAction="#onNewEvaluation"/>
         <HBox alignment="CENTER" styleClass="view-toggle-group">
             <ToggleButton fx:id="btnViewList" styleClass="view-toggle-btn">
                 <graphic>
@@ -34,7 +35,6 @@
                 <tooltip><Tooltip text="Affichage en cartes"/></tooltip>
             </ToggleButton>
         </HBox>
-        <Button fx:id="btnNewEval" text="Nouvelle évaluation" styleClass="btn-primary" onAction="#onNewEvaluation"/>
     </HBox>
 
     <!-- Zone de contenu (Tableau ou Cartes) -->
@@ -67,7 +67,7 @@
         <!-- Grille de Cartes d'Évaluations -->
         <ScrollPane fx:id="evalCardsScroll" fitToWidth="true" styleClass="main-content-scroll" hbarPolicy="NEVER"
                     visible="false" managed="false" maxHeight="Infinity" maxWidth="Infinity">
-            <VBox spacing="16">
+            <VBox spacing="16" style="-fx-padding: 12 6 24 6;">
                 <!-- Message d'état vide pour les cartes -->
                 <VBox fx:id="cardsEmptyStateBox" alignment="CENTER" spacing="12" visible="false" managed="false" styleClass="empty-state-box">
                     <HBox alignment="CENTER" styleClass="empty-state-icon-container">

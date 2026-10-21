@@ -60,7 +60,7 @@
 
             <ScrollPane fx:id="evalCardsScroll" fitToWidth="true" styleClass="main-content-scroll" hbarPolicy="NEVER"
                         visible="false" managed="false" maxHeight="Infinity" maxWidth="Infinity">
-                <VBox spacing="16">
+                <VBox spacing="16" style="-fx-padding: 12 6 24 6;">
                     <VBox fx:id="cardsEmptyStateBox" alignment="CENTER" spacing="10" visible="false" managed="false" style="-fx-padding: 40 0;">
                         <FontIcon iconLiteral="fth-inbox" iconColor="#74777f" iconSize="36"/>
                         <Label text="Aucune épreuve prête pour impression ou correction" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #424753;"/>

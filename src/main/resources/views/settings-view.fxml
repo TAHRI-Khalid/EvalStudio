@@ -3,43 +3,203 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
 
-<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="tk.tahri.eval.desktop.ui.controllers.SettingsViewController"
-      spacing="16" VBox.vgrow="ALWAYS" style="-fx-padding: 24 32 32 32;">
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="tk.tahri.eval.desktop.ui.controllers.SettingsViewController"
+            fitToWidth="true" hbarPolicy="NEVER" styleClass="settings-scroll">
 
-    <!-- En-tête -->
-    <VBox spacing="2" styleClass="view-header">
-        <Label text="Paramètres &amp; Environnement" styleClass="view-title"/>
-        <Label text="État des moteurs d'analyse et de la base de données locale" style="-fx-text-fill: -color-fg-muted;"/>
+    <VBox spacing="20" style="-fx-padding: 24 32 36 32;" maxWidth="1200">
+
+        <!-- En-tête de la page -->
+        <HBox alignment="CENTER_LEFT" spacing="16">
+            <VBox spacing="3" HBox.hgrow="ALWAYS">
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <Label text="Paramètres &amp; Environnement" styleClass="page-title"/>
+                    <Label fx:id="lblHeaderBadge" text="v0.1.6" styleClass="tag-badge"
+                           style="-fx-background-color: -color-accent-subtle; -fx-text-fill: -color-accent-emphasis;"/>
+                </HBox>
+                <Label text="Configuration de l'application, gestion des données locales et diagnostic du système"
+                       styleClass="page-subtitle"/>
+            </VBox>
+        </HBox>
+
+        <!-- Grille responsive 2 colonnes -->
+        <GridPane hgap="20" vgap="20">
+            <columnConstraints>
+                <ColumnConstraints percentWidth="50" hgrow="ALWAYS"/>
+                <ColumnConstraints percentWidth="50" hgrow="ALWAYS"/>
+            </columnConstraints>
+
+            <!-- COLONNE 1, LIGNE 0 : Préférences d'Affichage & Exports -->
+            <VBox spacing="14" styleClass="settings-card" GridPane.rowIndex="0" GridPane.columnIndex="0">
+                <HBox styleClass="settings-card-header">
+                    <HBox styleClass="settings-icon-container">
+                        <FontIcon iconLiteral="fth-sliders" iconSize="16"/>
+                    </HBox>
+                    <VBox spacing="1">
+                        <Label text="Préférences d'Affichage &amp; Exports" styleClass="settings-card-title"/>
+                        <Label text="Personnalisez vos modes de vue et l'emplacement des fichiers" styleClass="settings-card-subtitle"/>
+                    </VBox>
+                </HBox>
+
+                <Separator/>
+
+                <VBox spacing="10">
+                    <VBox spacing="4">
+                        <Label text="Vue par défaut : Conception des examens" styleClass="settings-field-label"/>
+                        <ComboBox fx:id="comboEvalViewMode" maxWidth="Infinity"/>
+                    </VBox>
+
+                    <VBox spacing="4">
+                        <Label text="Vue par défaut : Correction &amp; Résultats" styleClass="settings-field-label"/>
+                        <ComboBox fx:id="comboCorrectionViewMode" maxWidth="Infinity"/>
+                    </VBox>
+
+                    <VBox spacing="4">
+                        <Label text="Dossier d'export par défaut (Excel, PVs)" styleClass="settings-field-label"/>
+                        <HBox spacing="8" alignment="CENTER_LEFT">
+                            <TextField fx:id="txtExportDir" editable="false" HBox.hgrow="ALWAYS" promptText="Sélectionner un dossier..."/>
+                            <Button text="Parcourir..." onAction="#onBrowseExportDir" styleClass="btn-secondary">
+                                <graphic><FontIcon iconLiteral="fth-folder" iconSize="13"/></graphic>
+                            </Button>
+                        </HBox>
+                    </VBox>
+                </VBox>
+            </VBox>
+
+            <!-- COLONNE 2, LIGNE 0 : Base de données locale & Stockage -->
+            <VBox spacing="14" styleClass="settings-card" GridPane.rowIndex="0" GridPane.columnIndex="1">
+                <HBox styleClass="settings-card-header">
+                    <HBox styleClass="settings-icon-container">
+                        <FontIcon iconLiteral="fth-database" iconSize="16"/>
+                    </HBox>
+                    <VBox spacing="1" HBox.hgrow="ALWAYS">
+                        <Label text="Base de Données Locale &amp; Stockage" styleClass="settings-card-title"/>
+                        <Label text="Gestion du stockage H2 et des sauvegardes" styleClass="settings-card-subtitle"/>
+                    </VBox>
+                    <Label fx:id="lblDbBadge" text="Connectée" styleClass="tag-badge"
+                           style="-fx-background-color: #e6f4ea; -fx-text-fill: #137333;"/>
+                </HBox>
+
+                <Separator/>
+
+                <GridPane hgap="12" vgap="8">
+                    <columnConstraints>
+                        <ColumnConstraints minWidth="110" prefWidth="110"/>
+                        <ColumnConstraints hgrow="ALWAYS"/>
+                    </columnConstraints>
+
+                    <Label text="Moteur :" styleClass="settings-field-label" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                    <Label text="H2 Database (Fichier autonome)" styleClass="settings-field-value" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+                    <Label text="Fichier :" styleClass="settings-field-label" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                    <Label fx:id="lblDbPath" styleClass="settings-field-value" wrapText="true" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+                    <Label text="Taille :" styleClass="settings-field-label" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                    <Label fx:id="lblDbSize" styleClass="settings-field-value" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+
+                    <Label text="Groupes actifs :" styleClass="settings-field-label" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                    <Label fx:id="lblDbGroupsCount" styleClass="settings-field-value" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+                </GridPane>
+
+                <HBox spacing="10" alignment="CENTER_LEFT" style="-fx-padding: 4 0 0 0;">
+                    <Button text="Ouvrir l'emplacement" onAction="#onOpenDataFolder" styleClass="btn-secondary">
+                        <graphic><FontIcon iconLiteral="fth-folder" iconSize="13"/></graphic>
+                    </Button>
+                    <Button text="Exporter une sauvegarde" onAction="#onBackupDatabase" styleClass="btn-primary">
+                        <graphic><FontIcon iconLiteral="fth-download" iconSize="13"/></graphic>
+                    </Button>
+                </HBox>
+            </VBox>
+
+            <!-- COLONNE 1, LIGNE 1 : Moteurs d'Analyse Optique & Vision IA -->
+            <VBox spacing="14" styleClass="settings-card" GridPane.rowIndex="1" GridPane.columnIndex="0">
+                <HBox styleClass="settings-card-header">
+                    <HBox styleClass="settings-icon-container">
+                        <FontIcon iconLiteral="fth-cpu" iconSize="16"/>
+                    </HBox>
+                    <VBox spacing="1" HBox.hgrow="ALWAYS">
+                        <Label text="Moteurs d'Analyse Optique &amp; IA" styleClass="settings-card-title"/>
+                        <Label text="Reconnaissance visuelle et lecture optique des copies" styleClass="settings-card-subtitle"/>
+                    </VBox>
+                </HBox>
+
+                <Separator/>
+
+                <GridPane hgap="12" vgap="10">
+                    <columnConstraints>
+                        <ColumnConstraints minWidth="110" prefWidth="110"/>
+                        <ColumnConstraints hgrow="ALWAYS"/>
+                    </columnConstraints>
+
+                    <Label text="OpenCV :" styleClass="settings-field-label" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                    <HBox spacing="8" alignment="CENTER_LEFT" GridPane.rowIndex="0" GridPane.columnIndex="1">
+                        <Label fx:id="lblOpenCvBadge" text="✓ Actif" styleClass="tag-badge"
+                               style="-fx-background-color: #e6f4ea; -fx-text-fill: #137333;"/>
+                        <Label fx:id="lblOpenCvVersion" styleClass="settings-field-value"/>
+                    </HBox>
+
+                    <Label text="Modèle ONNX :" styleClass="settings-field-label" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                    <VBox spacing="2" GridPane.rowIndex="1" GridPane.columnIndex="1">
+                        <HBox spacing="8" alignment="CENTER_LEFT">
+                            <Label fx:id="lblOnnxBadge" text="✓ Opérationnel" styleClass="tag-badge"
+                                   style="-fx-background-color: #e6f4ea; -fx-text-fill: #137333;"/>
+                            <Label fx:id="lblOnnxSize" styleClass="settings-field-value"/>
+                        </HBox>
+                        <Label fx:id="lblOnnxPath" styleClass="settings-card-subtitle" wrapText="true"/>
+                    </VBox>
+                </GridPane>
+
+                <HBox alignment="CENTER_LEFT" style="-fx-padding: 4 0 0 0;">
+                    <Button text="Lancer un auto-diagnostic" onAction="#onTestAi" styleClass="btn-secondary">
+                        <graphic><FontIcon iconLiteral="fth-check-circle" iconSize="13"/></graphic>
+                    </Button>
+                </HBox>
+            </VBox>
+
+            <!-- COLONNE 2, LIGNE 1 : Système & Environnement -->
+            <VBox spacing="14" styleClass="settings-card" GridPane.rowIndex="1" GridPane.columnIndex="1">
+                <HBox styleClass="settings-card-header">
+                    <HBox styleClass="settings-icon-container">
+                        <FontIcon iconLiteral="fth-info" iconSize="16"/>
+                    </HBox>
+                    <VBox spacing="1" HBox.hgrow="ALWAYS">
+                        <Label text="Système &amp; Environnement" styleClass="settings-card-title"/>
+                        <Label text="Informations sur la machine et le runtime" styleClass="settings-card-subtitle"/>
+                    </VBox>
+                </HBox>
+
+                <Separator/>
+
+                <GridPane hgap="12" vgap="8">
+                    <columnConstraints>
+                        <ColumnConstraints minWidth="110" prefWidth="110"/>
+                        <ColumnConstraints hgrow="ALWAYS"/>
+                    </columnConstraints>
+
+                    <Label text="Application :" styleClass="settings-field-label" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                    <Label fx:id="lblAppVersion" styleClass="settings-field-value" style="-fx-font-weight: bold;" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+                    <Label text="Java Runtime :" styleClass="settings-field-label" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                    <Label fx:id="lblJavaVersion" styleClass="settings-field-value" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+                    <Label text="Système :" styleClass="settings-field-label" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                    <Label fx:id="lblOsInfo" styleClass="settings-field-value" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+
+                    <Label text="Mémoire vive :" styleClass="settings-field-label" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                    <VBox spacing="4" GridPane.rowIndex="3" GridPane.columnIndex="1">
+                        <ProgressBar fx:id="progressMemory" maxWidth="Infinity" prefHeight="8"/>
+                        <Label fx:id="lblMemoryDetails" styleClass="settings-card-subtitle"/>
+                    </VBox>
+                </GridPane>
+
+                <HBox alignment="CENTER_LEFT" style="-fx-padding: 4 0 0 0;">
+                    <Button text="Optimiser la mémoire" onAction="#onGarbageCollect" styleClass="btn-ghost">
+                        <graphic><FontIcon iconLiteral="fth-refresh-cw" iconSize="12"/></graphic>
+                    </Button>
+                </HBox>
+            </VBox>
+        </GridPane>
     </VBox>
-
-    <GridPane hgap="16" vgap="16">
-        <!-- Carte Base de données H2 -->
-        <VBox spacing="10" styleClass="card" GridPane.rowIndex="0" GridPane.columnIndex="0" prefWidth="480">
-            <Label text="Base de données locale H2" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
-            <GridPane hgap="10" vgap="6">
-                <Label text="Fichier :" style="-fx-font-weight: bold;" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                <Label fx:id="lblDbPath" wrapText="true" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-
-                <Label text="Taille :" style="-fx-font-weight: bold;" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                <Label fx:id="lblDbSize" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-
-                <Label text="Mode :" style="-fx-font-weight: bold;" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-                <Label text="Fichier autonome (Mono-utilisateur)" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
-            </GridPane>
-        </VBox>
-
-        <!-- Carte Vision OpenCV & ONNX -->
-        <VBox spacing="10" styleClass="card" GridPane.rowIndex="0" GridPane.columnIndex="1" prefWidth="480">
-            <Label text="Moteurs de Reconnaissance Optique" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
-            <GridPane hgap="10" vgap="6">
-                <Label text="OpenCV :" style="-fx-font-weight: bold;" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                <Label fx:id="lblOpenCvStatus" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-
-                <Label text="Modèle ONNX :" style="-fx-font-weight: bold;" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                <Label fx:id="lblOnnxStatus" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-            </GridPane>
-        </VBox>
-    </GridPane>
-</VBox>
+</ScrollPane>

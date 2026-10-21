@@ -37,10 +37,10 @@ public class Evaluation {
     private double defaultScoreIfEmpty = 0.0;
     private double defaultScoreIfIncorrect = 0.0;
 
-    private boolean questionShuffle = false;
-    private boolean answersShuffle = false;
+    private boolean questionShuffle = true;
+    private boolean answersShuffle = true;
     private int columnCount = 1;
-    private boolean doubleSided = false;
+    private boolean doubleSided = true;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "json")

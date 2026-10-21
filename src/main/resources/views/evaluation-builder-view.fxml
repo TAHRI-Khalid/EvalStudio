@@ -65,9 +65,9 @@
                 <Separator/>
 
                 <Label text="Options d'impression" style="-fx-font-weight: bold;"/>
-                <CheckBox fx:id="chkShuffleQuestions" text="Mélanger l'ordre des questions"/>
-                <CheckBox fx:id="chkShuffleAnswers" text="Mélanger l'ordre des réponses"/>
-                <CheckBox fx:id="chkDoubleSided" text="Impression Recto-Verso"/>
+                <CheckBox fx:id="chkShuffleQuestions" text="Mélanger l'ordre des questions" selected="true"/>
+                <CheckBox fx:id="chkShuffleAnswers" text="Mélanger l'ordre des réponses" selected="true"/>
+                <CheckBox fx:id="chkDoubleSided" text="Impression Recto-Verso" selected="true"/>
 
                 <Separator/>
 

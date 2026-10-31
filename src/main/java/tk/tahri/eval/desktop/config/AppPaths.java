@@ -23,13 +23,15 @@ public final class AppPaths {
     private AppPaths() {}
 
     public static synchronized Path init() {
-        if (appDir != null) {
-            return appDir;
-        }
-
         String customDir = System.getProperty("app.dir");
         if (customDir != null && !customDir.isBlank()) {
-            appDir = Path.of(customDir).toAbsolutePath().normalize();
+            Path customPath = Path.of(customDir).toAbsolutePath().normalize();
+            if (appDir != null && appDir.equals(customPath)) {
+                return appDir;
+            }
+            appDir = customPath;
+        } else if (appDir != null) {
+            return appDir;
         } else if (new File("pom.xml").exists()) {
             // Mode développement : exécuté depuis la racine du dépôt source
             appDir = Path.of(".").toAbsolutePath().normalize();
@@ -52,6 +54,13 @@ public final class AppPaths {
         }
 
         return appDir;
+    }
+
+    /**
+     * Réinitialise le chemin mis en cache (destiné aux tests automatisés).
+     */
+    public static synchronized void resetForTests() {
+        appDir = null;
     }
 
     private static Path resolveDefaultAppDataDir() {

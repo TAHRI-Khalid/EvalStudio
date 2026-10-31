@@ -16,7 +16,7 @@
             <VBox spacing="3" HBox.hgrow="ALWAYS">
                 <HBox alignment="CENTER_LEFT" spacing="10">
                     <Label text="Paramètres &amp; Environnement" styleClass="page-title"/>
-                    <Label fx:id="lblHeaderBadge" text="v0.1.6" styleClass="tag-badge"
+                    <Label fx:id="lblHeaderBadge" text="v0.1.7" styleClass="tag-badge"
                            style="-fx-background-color: -color-accent-subtle; -fx-text-fill: -color-accent-emphasis;"/>
                 </HBox>
                 <Label text="Configuration de l'application, gestion des données locales et diagnostic du système"
@@ -104,11 +104,11 @@
                 </GridPane>
 
                 <HBox spacing="10" alignment="CENTER_LEFT" style="-fx-padding: 4 0 0 0;">
-                    <Button text="Ouvrir l'emplacement" onAction="#onOpenDataFolder" styleClass="btn-secondary">
-                        <graphic><FontIcon iconLiteral="fth-folder" iconSize="13"/></graphic>
-                    </Button>
-                    <Button text="Exporter une sauvegarde" onAction="#onBackupDatabase" styleClass="btn-primary">
+                    <Button fx:id="btnExportBackup" text="Exporter une sauvegarde" onAction="#onExportBackup" styleClass="btn-primary">
                         <graphic><FontIcon iconLiteral="fth-download" iconSize="13"/></graphic>
+                    </Button>
+                    <Button fx:id="btnImportBackup" text="Importer une sauvegarde" onAction="#onImportBackup" styleClass="btn-secondary">
+                        <graphic><FontIcon iconLiteral="fth-upload" iconSize="13"/></graphic>
                     </Button>
                 </HBox>
             </VBox>

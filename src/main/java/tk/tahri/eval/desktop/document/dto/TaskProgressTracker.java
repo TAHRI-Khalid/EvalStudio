@@ -35,6 +35,35 @@ public class TaskProgressTracker {
         emitProgress();
     }
 
+    public synchronized void updateProgress(double stageFraction, int currentStep, int totalSteps, String detail) {
+        this.currentStep = currentStep;
+        this.totalSteps = Math.max(1, totalSteps);
+        this.currentDetail = detail != null ? detail : "";
+        double fraction = Math.min(1.0, Math.max(0.0, stageFraction));
+        double overallRatio = Math.min(1.0, baseRatio + (fraction * stageWeight));
+        long elapsed = Math.max(1, System.currentTimeMillis() - startTime);
+
+        Long eta = null;
+        if (overallRatio > 0.05 && overallRatio < 1.0) {
+            long totalEstimated = (long) (elapsed / overallRatio);
+            eta = Math.max(0, totalEstimated - elapsed);
+        }
+
+        if (consumer != null) {
+            consumer.accept(new TaskProgress(
+                    stageTitle != null ? stageTitle : "En cours...",
+                    this.currentStep,
+                    this.totalSteps,
+                    overallRatio,
+                    this.currentDetail,
+                    elapsed,
+                    eta,
+                    successCount,
+                    warningCount
+            ));
+        }
+    }
+
     public synchronized void recordSuccess() {
         this.successCount++;
         emitProgress();

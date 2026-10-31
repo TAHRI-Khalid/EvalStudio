@@ -522,14 +522,27 @@ public class CorrectionViewController implements Initializable {
     }
 
     private void setupTableColumns() {
-        colMatricule.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().matriculation()));
-        colNom.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().lastName()));
-        colPrenom.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().firstName()));
+        colMatricule.setCellValueFactory(c -> {
+            StudentGrade g = c != null ? c.getValue() : null;
+            return new SimpleStringProperty(g != null && g.matriculation() != null ? g.matriculation() : "");
+        });
+        colNom.setCellValueFactory(c -> {
+            StudentGrade g = c != null ? c.getValue() : null;
+            return new SimpleStringProperty(g != null && g.lastName() != null ? g.lastName() : "");
+        });
+        colPrenom.setCellValueFactory(c -> {
+            StudentGrade g = c != null ? c.getValue() : null;
+            return new SimpleStringProperty(g != null && g.firstName() != null ? g.firstName() : "");
+        });
         colQuestions.setCellValueFactory(c -> {
-            StudentGrade g = c.getValue();
+            StudentGrade g = c != null ? c.getValue() : null;
+            if (g == null) return new SimpleStringProperty("");
             return new SimpleStringProperty(g.correctedQuestions() + " / " + g.totalQuestions());
         });
-        colScore.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().score()));
+        colScore.setCellValueFactory(c -> {
+            StudentGrade g = c != null ? c.getValue() : null;
+            return new SimpleObjectProperty<>(g != null ? g.score() : null);
+        });
         colScore.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(Double item, boolean empty) {
@@ -556,7 +569,11 @@ public class CorrectionViewController implements Initializable {
                 btnCopy.setStyle("-fx-text-fill: #004faa; -fx-font-size: 11px;");
                 btnCopy.setGraphic(new FontIcon(Feather.FILE));
                 btnCopy.setOnAction(e -> {
-                    StudentGrade grade = getTableView().getItems().get(getIndex());
+                    TableRow<StudentGrade> row = getTableRow();
+                    StudentGrade grade = row != null ? row.getItem() : null;
+                    if (grade == null && getIndex() >= 0 && getTableView() != null && getIndex() < getTableView().getItems().size()) {
+                        grade = getTableView().getItems().get(getIndex());
+                    }
                     if (grade != null) {
                         viewIndividualCopy(grade);
                     }
@@ -568,10 +585,20 @@ public class CorrectionViewController implements Initializable {
                 super.updateItem(item, empty);
                 if (empty) {
                     setGraphic(null);
+                    setText(null);
                 } else {
-                    StudentGrade grade = getTableView().getItems().get(getIndex());
-                    btnCopy.setDisable(grade.correctedPages() == 0);
-                    setGraphic(btnCopy);
+                    TableRow<StudentGrade> row = getTableRow();
+                    StudentGrade grade = row != null ? row.getItem() : null;
+                    if (grade == null && getIndex() >= 0 && getTableView() != null && getIndex() < getTableView().getItems().size()) {
+                        grade = getTableView().getItems().get(getIndex());
+                    }
+                    if (grade != null) {
+                        btnCopy.setDisable(grade.correctedPages() == 0);
+                        setGraphic(btnCopy);
+                    } else {
+                        setGraphic(null);
+                    }
+                    setText(null);
                 }
             }
         });
@@ -598,7 +625,7 @@ public class CorrectionViewController implements Initializable {
     private void setupQuestionsTable() {
         if (questionsTable == null) return;
 
-        colQNumber.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().questionNumber()));
+        colQNumber.setCellValueFactory(c -> new SimpleObjectProperty<>(c != null && c.getValue() != null ? c.getValue().questionNumber() : null));
         colQNumber.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(Integer item, boolean empty) {
@@ -613,7 +640,7 @@ public class CorrectionViewController implements Initializable {
             }
         });
 
-        colQContent.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().content()));
+        colQContent.setCellValueFactory(c -> new SimpleStringProperty(c != null && c.getValue() != null && c.getValue().content() != null ? c.getValue().content() : ""));
         colQContent.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
@@ -628,7 +655,7 @@ public class CorrectionViewController implements Initializable {
             }
         });
 
-        colQCorrect.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().correctCount()));
+        colQCorrect.setCellValueFactory(c -> new SimpleObjectProperty<>(c != null && c.getValue() != null ? c.getValue().correctCount() : 0L));
         colQCorrect.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(Long item, boolean empty) {
@@ -643,7 +670,7 @@ public class CorrectionViewController implements Initializable {
             }
         });
 
-        colQEmpty.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().emptyCount()));
+        colQEmpty.setCellValueFactory(c -> new SimpleObjectProperty<>(c != null && c.getValue() != null ? c.getValue().emptyCount() : 0L));
         colQEmpty.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(Long item, boolean empty) {
@@ -658,7 +685,7 @@ public class CorrectionViewController implements Initializable {
             }
         });
 
-        colQIncorrect.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().incorrectCount()));
+        colQIncorrect.setCellValueFactory(c -> new SimpleObjectProperty<>(c != null && c.getValue() != null ? c.getValue().incorrectCount() : 0L));
         colQIncorrect.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(Long item, boolean empty) {
@@ -673,7 +700,7 @@ public class CorrectionViewController implements Initializable {
             }
         });
 
-        colQTotal.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().totalEvaluated()));
+        colQTotal.setCellValueFactory(c -> new SimpleObjectProperty<>(c != null && c.getValue() != null ? c.getValue().totalEvaluated() : 0L));
         colQTotal.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(Long item, boolean empty) {
@@ -688,7 +715,7 @@ public class CorrectionViewController implements Initializable {
             }
         });
 
-        colQSuccessRate.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().successRate()));
+        colQSuccessRate.setCellValueFactory(c -> new SimpleObjectProperty<>(c != null && c.getValue() != null ? c.getValue().successRate() : 0.0));
         colQSuccessRate.setCellFactory(col -> new TableCell<>() {
             private final ProgressBar bar = new ProgressBar(0.0);
             private final Label label = new Label();
@@ -1171,6 +1198,10 @@ public class CorrectionViewController implements Initializable {
         Platform.runLater(() -> {
             try {
                 var resp = gradeService.getGrades(currentGroup.getId(), evaluationId);
+
+                if (gradesTable != null) {
+                    gradesTable.getSelectionModel().clearSelection();
+                }
                 studentGradesList.setAll(resp.students());
 
                 var stats = resp.statistics();
@@ -1232,8 +1263,14 @@ public class CorrectionViewController implements Initializable {
                     }
                 }
                 updateQuestionsFilterPredicate();
-
                 updateFilterPredicate();
+
+                if (gradesTable != null) {
+                    gradesTable.refresh();
+                }
+                if (questionsTable != null) {
+                    questionsTable.refresh();
+                }
 
                 evaluationService.getEvaluation(evaluationId);
             } catch (Exception e) {

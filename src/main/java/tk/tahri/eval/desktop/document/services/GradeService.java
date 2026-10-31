@@ -86,7 +86,17 @@ public class GradeService {
         List<BlueprintPaperAssessment> assessments =
                 blueprintPaperAssessmentRepository.findByGroupIdAndEvaluationId(groupId, evaluationId);
         List<StudentGrade> students = assessments.stream()
+                .filter(java.util.Objects::nonNull)
                 .map(a -> this.toGrade(a, evaluation))
+                .sorted((s1, s2) -> {
+                    String n1 = s1.lastName() != null ? s1.lastName() : "";
+                    String n2 = s2.lastName() != null ? s2.lastName() : "";
+                    int cmp = n1.compareToIgnoreCase(n2);
+                    if (cmp != 0) return cmp;
+                    String p1 = s1.firstName() != null ? s1.firstName() : "";
+                    String p2 = s2.firstName() != null ? s2.firstName() : "";
+                    return p1.compareToIgnoreCase(p2);
+                })
                 .toList();
         List<QuestionStatistics> questionStats = computeQuestionStatistics(evaluation, assessments);
         return new GradesResponse(computeStatistics(students), students, questionStats);

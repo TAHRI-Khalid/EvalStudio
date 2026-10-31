@@ -134,6 +134,13 @@ public class TaskProgressDialog {
         this.onCancelAction = onCancelAction;
     }
 
+    public void setCancelVisible(boolean visible) {
+        Platform.runLater(() -> {
+            btnCancel.setVisible(visible);
+            btnCancel.setManaged(visible);
+        });
+    }
+
     private void handleCancel() {
         this.cancelled = true;
         btnCancel.setDisable(true);

@@ -2,14 +2,18 @@ package tk.tahri.eval.desktop.ui.controllers;
 
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.TextField;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
+import org.kordamp.ikonli.feather.Feather;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,9 +22,14 @@ import org.springframework.stereotype.Component;
 import tk.tahri.eval.desktop.config.AppPaths;
 import tk.tahri.eval.desktop.config.AppPreferences;
 import tk.tahri.eval.desktop.config.AppVersion;
+import tk.tahri.eval.desktop.document.dto.TaskProgressTracker;
 import tk.tahri.eval.desktop.document.services.CheckboxClassifier;
+import tk.tahri.eval.desktop.service.BackupService;
 import tk.tahri.eval.desktop.service.GroupService;
+import tk.tahri.eval.desktop.service.dto.BackupManifest;
 import tk.tahri.eval.desktop.ui.NotificationService;
+import tk.tahri.eval.desktop.ui.util.AppRestartUtils;
+import tk.tahri.eval.desktop.ui.util.TaskProgressDialog;
 
 import java.awt.Desktop;
 import java.io.File;
@@ -46,11 +55,13 @@ public class SettingsViewController implements Initializable {
     @FXML private ComboBox<String> comboCorrectionViewMode;
     @FXML private TextField txtExportDir;
 
-    // Base de données locale H2
+    // Base de données locale H2 & Sauvegardes
     @FXML private Label lblDbBadge;
     @FXML private Label lblDbPath;
     @FXML private Label lblDbSize;
     @FXML private Label lblDbGroupsCount;
+    @FXML private Button btnExportBackup;
+    @FXML private Button btnImportBackup;
 
     // Vision Optique & IA
     @FXML private Label lblOpenCvBadge;
@@ -71,6 +82,7 @@ public class SettingsViewController implements Initializable {
     private final NotificationService notificationService;
     private final GroupService groupService;
     private final CheckboxClassifier checkboxClassifier;
+    private final BackupService backupService;
 
     @Value("${eval.document.model-path:model/eval_model.onnx}")
     private String modelPath;
@@ -79,12 +91,14 @@ public class SettingsViewController implements Initializable {
                                   AppPreferences appPreferences,
                                   NotificationService notificationService,
                                   GroupService groupService,
-                                  CheckboxClassifier checkboxClassifier) {
+                                  CheckboxClassifier checkboxClassifier,
+                                  BackupService backupService) {
         this.mainLayoutController = mainLayoutController;
         this.appPreferences = appPreferences;
         this.notificationService = notificationService;
         this.groupService = groupService;
         this.checkboxClassifier = checkboxClassifier;
+        this.backupService = backupService;
     }
 
     @Override
@@ -241,42 +255,176 @@ public class SettingsViewController implements Initializable {
     }
 
     @FXML
-    public void onOpenDataFolder() {
-        File dataDir = AppPaths.getDataDir().toFile();
-        try {
-            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
-                Desktop.getDesktop().open(dataDir);
-            } else {
-                new ProcessBuilder("xdg-open", dataDir.getAbsolutePath()).start();
-            }
-        } catch (Exception e) {
-            log.error("Impossible d'ouvrir le dossier de données {}", dataDir, e);
-            notificationService.showError("Erreur", "Impossible d'ouvrir le dossier : " + e.getMessage());
-        }
+    public void onBackupDatabase() {
+        onExportBackup();
     }
 
     @FXML
-    public void onBackupDatabase() {
+    public void onExportBackup() {
         FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Exporter une sauvegarde de la base de données");
-        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Sauvegarde H2 (*.mv.db)", "*.mv.db"));
+        fileChooser.setTitle("Exporter une sauvegarde complète");
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Sauvegarde EvalStudio (*.evalbackup)", "*.evalbackup"),
+                new FileChooser.ExtensionFilter("Archive ZIP (*.zip)", "*.zip")
+        );
         String dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-        fileChooser.setInitialFileName("evaldb_backup_" + dateStr + ".mv.db");
-        File dest = fileChooser.showSaveDialog(null);
-        if (dest != null) {
-            File src = AppPaths.getDataDir().resolve("evaldb.mv.db").toFile();
-            if (!src.exists()) {
-                notificationService.showWarning("Base non initialisée", "Aucune base de données à sauvegarder pour l'instant.");
-                return;
+        fileChooser.setInitialFileName("evalstudio_backup_" + dateStr + ".evalbackup");
+
+        File dest = fileChooser.showSaveDialog(
+                btnExportBackup != null && btnExportBackup.getScene() != null ? btnExportBackup.getScene().getWindow() : null
+        );
+        if (dest == null) return;
+
+        // Dialogue visuel de progression
+        TaskProgressDialog progressDialog = new TaskProgressDialog(
+                btnExportBackup != null && btnExportBackup.getScene() != null ? btnExportBackup.getScene().getWindow() : null,
+                "Exportation de la sauvegarde",
+                "Création de l'archive complète",
+                Feather.DOWNLOAD
+        );
+        progressDialog.show();
+
+        if (btnExportBackup != null) btnExportBackup.setDisable(true);
+        if (btnImportBackup != null) btnImportBackup.setDisable(true);
+
+        TaskProgressTracker tracker = new TaskProgressTracker(progressDialog::update);
+
+        Task<File> task = new Task<>() {
+            @Override
+            protected File call() throws Exception {
+                return backupService.exportBackup(dest, tracker, this::isCancelled);
             }
-            try {
-                Files.copy(src.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                notificationService.showSuccess("Sauvegarde réussie", "Fichier sauvegardé avec succès dans :\n" + dest.getAbsolutePath());
-            } catch (Exception e) {
-                log.error("Échec de la sauvegarde de la base de données", e);
-                notificationService.showError("Erreur de sauvegarde", e.getMessage());
-            }
+        };
+
+        progressDialog.setOnCancel(() -> task.cancel(true));
+
+        task.setOnCancelled(e -> {
+            progressDialog.close();
+            if (btnExportBackup != null) btnExportBackup.setDisable(false);
+            if (btnImportBackup != null) btnImportBackup.setDisable(false);
+            notificationService.showWarning("Exportation annulée", "L'exportation a été interrompue par l'utilisateur.");
+        });
+
+        task.setOnFailed(e -> {
+            progressDialog.close();
+            if (btnExportBackup != null) btnExportBackup.setDisable(false);
+            if (btnImportBackup != null) btnImportBackup.setDisable(false);
+            Throwable ex = task.getException();
+            log.error("Échec de l'exportation de la sauvegarde", ex);
+            notificationService.showError("Erreur d'exportation", ex != null ? ex.getMessage() : "Une erreur inconnue est survenue.");
+        });
+
+        task.setOnSucceeded(e -> {
+            javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.millis(350));
+            pause.setOnFinished(ev -> {
+                progressDialog.close();
+                if (btnExportBackup != null) btnExportBackup.setDisable(false);
+                if (btnImportBackup != null) btnImportBackup.setDisable(false);
+                refreshDatabaseInfo();
+                notificationService.showSuccess("Sauvegarde réussie",
+                        "Sauvegarde complète exportée (" + BackupService.formatSize(dest.length()) + ") :\n" + dest.getAbsolutePath());
+            });
+            pause.play();
+        });
+
+        Thread thread = new Thread(task, "ExportBackupThread");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    @FXML
+    public void onImportBackup() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Sélectionner une sauvegarde à restaurer");
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Sauvegardes EvalStudio (*.evalbackup, *.zip)", "*.evalbackup", "*.zip"),
+                new FileChooser.ExtensionFilter("Tous les fichiers (*.*)", "*.*")
+        );
+
+        File src = fileChooser.showOpenDialog(
+                btnImportBackup != null && btnImportBackup.getScene() != null ? btnImportBackup.getScene().getWindow() : null
+        );
+        if (src == null) return;
+
+        BackupManifest manifest;
+        try {
+            manifest = backupService.validateBackup(src);
+        } catch (Exception e) {
+            log.warn("Fichier de sauvegarde non valide : {}", e.getMessage());
+            notificationService.showError("Fichier invalide", e.getMessage());
+            return;
         }
+
+        String dateFormatted = manifest.createdAt() != null
+                ? manifest.createdAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                : "Inconnue";
+
+        String confirmationMsg = "Détails de la sauvegarde sélectionnée :\n"
+                + "• Date de création : " + dateFormatted + "\n"
+                + "• Documents & médias : " + manifest.totalFiles() + " fichiers (" + BackupService.formatSize(manifest.uncompressedSizeBytes()) + " décompressés)\n"
+                + "• Groupes d'étudiants : " + manifest.activeGroupsCount() + "\n\n"
+                + "Attention : Cette opération va remplacer l'ensemble de vos données actuelles (base de données H2, scans, corrections et images). "
+                + "L'application va restaurer les données puis redémarrer automatiquement pour charger la nouvelle base.\n\n"
+                + "Voulez-vous procéder à la restauration ?";
+
+        boolean confirmed = notificationService.confirm(
+                "Confirmation de restauration",
+                "Remplacement complet des données",
+                confirmationMsg,
+                "Restaurer et redémarrer",
+                "Annuler"
+        );
+
+        if (!confirmed) return;
+
+        // Dialogue visuel de progression
+        TaskProgressDialog progressDialog = new TaskProgressDialog(
+                btnImportBackup != null && btnImportBackup.getScene() != null ? btnImportBackup.getScene().getWindow() : null,
+                "Restauration des données",
+                "Restauration de la sauvegarde",
+                Feather.UPLOAD
+        );
+        progressDialog.setCancelVisible(false);
+        progressDialog.show();
+
+        if (btnExportBackup != null) btnExportBackup.setDisable(true);
+        if (btnImportBackup != null) btnImportBackup.setDisable(true);
+
+        TaskProgressTracker tracker = new TaskProgressTracker(progressDialog::update);
+
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                backupService.importBackup(src, tracker, this::isCancelled);
+                return null;
+            }
+        };
+
+        task.setOnFailed(e -> {
+            progressDialog.close();
+            if (btnExportBackup != null) btnExportBackup.setDisable(false);
+            if (btnImportBackup != null) btnImportBackup.setDisable(false);
+            Throwable ex = task.getException();
+            log.error("Échec de la restauration de la sauvegarde", ex);
+            notificationService.showError("Échec de la restauration",
+                    ex != null ? ex.getMessage() : "Une erreur inconnue est survenue.");
+        });
+
+        task.setOnSucceeded(e -> {
+            progressDialog.close();
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Restauration réussie");
+            alert.setHeaderText("Données restaurées avec succès !");
+            alert.setContentText("L'intégralité de vos évaluations, copies et notes a été restaurée.\n\n"
+                    + "L'application va maintenant redémarrer automatiquement.");
+            alert.showAndWait();
+
+            AppRestartUtils.restart();
+        });
+
+        Thread thread = new Thread(task, "ImportBackupThread");
+        thread.setDaemon(true);
+        thread.start();
     }
 
     @FXML
